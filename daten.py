@@ -40,7 +40,10 @@ def lade_aufgaben(pfad: Path) -> pd.DataFrame:
     Raises:
         ValueError: Wenn das Blatt fehlt oder eine Woche keine Zahl ist.
     """
-    df = pd.read_excel(pfad, sheet_name="Aufgabenliste", usecols="A:D", engine="openpyxl")
+    # Spalten über ihren Namen lesen, nicht über die Position, damit
+    # zusätzliche Spalten (z. B. "Frist") an beliebiger Stelle stehen dürfen.
+    df = pd.read_excel(pfad, sheet_name="Aufgabenliste", engine="openpyxl")
+    df.columns = [str(name).strip() for name in df.columns]
     df = df.dropna(subset=["Modul"])
     df["Modul"] = df["Modul"].astype(str).str.strip()
     df["Notiz"] = _als_text(df["Notiz"])
