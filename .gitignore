@@ -1,0 +1,11 @@
+# persönliche Daten
+uni.xlsx
+~$*.xlsx
+
+__pycache__/
+*.pyc
+.venv/
+venv/
+.vscode/
+.idea/
+dashboard.log

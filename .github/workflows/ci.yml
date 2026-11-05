@@ -1,0 +1,34 @@
+# Prüft bei jedem Push und Pull Request Stil, Docstrings und Tests.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pruefen:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Älteste unterstützte und aktuelle Version
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      - name: Pakete installieren
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Stil und Docstrings (ruff)
+        run: ruff check .
+
+      - name: Tests (pytest und Docstring-Beispiele)
+        run: pytest -v

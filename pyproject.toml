@@ -1,0 +1,29 @@
+[project]
+name = "uni-dashboard"
+version = "0.1.0"
+description = "Wochenüberblick über Stundenplan, Prüfungen und Aufgaben aus einer Excel-Datei"
+requires-python = ">=3.10"
+license = "MIT"
+
+[tool.ruff]
+line-length = 120
+extend-include = ["*.pyw"]
+
+[tool.ruff.lint]
+# E/F: Fehler und Stil (pycodestyle, pyflakes), D: Docstrings
+select = ["E", "F", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Testnamen beschreiben sich selbst, einzelne Docstrings wären doppelt
+"tests/*" = ["D103"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests", "daten.py"]
+addopts = "--doctest-modules"
+# Warnungen als Fehler: Hinweise auf künftige Änderungen in pandas & Co.
+# sollen auffallen, bevor sie zum Absturz führen.
+filterwarnings = ["error"]
