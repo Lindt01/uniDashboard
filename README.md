@@ -58,6 +58,7 @@ Die eigene `uni.xlsx` steht in `.gitignore` und wird nicht hochgeladen.
 
 ```
 app.py            Oberfläche (Streamlit)
+grafiken.py       Diagramme: Stundenplan, Wochenbalken, Fortschrittsringe
 stil.css          Gestaltung (Karten, Kennzahlen, Ringe)
 starten.pyw       Start als Desktop-Programm
 daten.py          Einlesen und Aufbereiten der Excel-Blätter

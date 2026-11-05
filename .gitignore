@@ -1,5 +1,6 @@
 # persönliche Daten
 uni.xlsx
+excel_pfad.txt
 ~$*.xlsx
 
 __pycache__/
