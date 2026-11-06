@@ -1,10 +1,15 @@
-# Prüft bei jedem Push und Pull Request Stil, Docstrings und Tests.
+# Prüft Stil, Docstrings, Tests und bekannte Sicherheitslücken.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+  # Einmal pro Woche auch ohne Änderung, damit neu bekannt gewordene
+  # Sicherheitslücken in den Paketen auffallen
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,9 +18,10 @@ jobs:
   pruefen:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        # Älteste unterstützte und aktuelle Version
-        python: ["3.10", "3.12"]
+        # Älteste Version, die alle festgelegten Pakete unterstützen, und aktuelle
+        python: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
 
@@ -24,11 +30,17 @@ jobs:
           python-version: ${{ matrix.python }}
           cache: pip
 
-      - name: Pakete installieren
-        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Pakete installieren (genaue Versionen aus den Lock-Dateien)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+          pip install -e . --no-deps
 
       - name: Stil und Docstrings (ruff)
         run: ruff check .
 
       - name: Tests (pytest und Docstring-Beispiele)
         run: pytest -v
+
+      - name: Bekannte Sicherheitslücken (pip-audit)
+        run: pip-audit --skip-editable

@@ -10,6 +10,7 @@ if not exist "%PROJEKT%\.venv\Scripts\pythonw.exe" (
     echo   python -m venv .venv
     echo   .venv\Scripts\activate
     echo   pip install -r requirements.txt
+    echo   pip install -e . --no-deps
     pause
     exit /b 1
 )

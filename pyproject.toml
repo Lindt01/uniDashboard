@@ -7,11 +7,12 @@ name = "uni-dashboard"
 version = "0.1.0"
 description = "Wochenüberblick über Stundenplan, Prüfungen und Aufgaben aus einer Excel-Datei"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE", "uni_dashboard/static/fonts/LICENSE-*.txt"]
 authors = [{ name = "Mirlind Musa" }]
-# Einzige Stelle für die Paketversionen; requirements.txt verweist hierher
+# Mindestversionen. Die genauen, getesteten Versionen aller Pakete stehen in
+# requirements.txt (mit pip-compile daraus erzeugt, von Dependabot aktuell gehalten).
 dependencies = [
     "streamlit>=1.51",
     "pandas>=2.0",

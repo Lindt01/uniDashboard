@@ -35,13 +35,14 @@ und Quelle zugleich: draw.io (oder die VS-Code-Erweiterung „Draw.io Integratio
 
 ## Starten
 
-Voraussetzung: Python 3.10 oder neuer.
+Voraussetzung: Python 3.12 oder neuer.
 
 ```bash
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # Linux/macOS
-pip install -r requirements.txt   # installiert das Projekt samt Abhängigkeiten
+pip install -r requirements.txt   # Pakete in genau den getesteten Versionen
+pip install -e . --no-deps        # das Projekt selbst (Änderungen wirken sofort)
 streamlit run uni_dashboard/app.py
 ```
 
@@ -108,12 +109,27 @@ beispiel.xlsx           Beispieldaten
 ## Entwicklung
 
 Docstrings folgen dem Google-Stil, Funktionen haben Type Hints. Bei jedem Push
-prüft GitHub Actions beides automatisch unter Python 3.10 und 3.12. Lokal:
+prüft GitHub Actions unter Python 3.12 und 3.13 Stil, Tests und bekannte
+Sicherheitslücken in den Paketen, zusätzlich einmal pro Woche. Lokal:
 
 ```bash
 pip install -r requirements-dev.txt
-ruff check .   # Stil und Docstrings
-pytest         # Tests in tests/ und Beispiele in den Docstrings
+ruff check .               # Stil und Docstrings
+pytest                     # Tests in tests/ und Beispiele in den Docstrings
+pip-audit --skip-editable  # bekannte Sicherheitslücken
+```
+
+### Paketversionen
+
+`pyproject.toml` nennt nur Mindestversionen. Die genauen Versionen aller Pakete,
+mit denen getestet wird, stehen in `requirements.txt` und `requirements-dev.txt`.
+[Dependabot](.github/dependabot.yml) prüft jeden Montag auf neuere Versionen
+und öffnet dafür Pull Requests, die die CI automatisch testet. Nach einer
+Änderung an den Abhängigkeiten in `pyproject.toml` die Lock-Datei neu erzeugen:
+
+```bash
+pip install pip-tools
+pip-compile --strip-extras --no-emit-index-url --output-file requirements.txt pyproject.toml
 ```
 
 ## Geplant
@@ -121,7 +137,7 @@ pytest         # Tests in tests/ und Beispiele in den Docstrings
 - [ ] Docker-Image
 - [x] Tests für `daten.py`
 - [x] GitHub Actions (Lint und Tests)
-- [ ] Paketversionen festlegen und automatisch auf Sicherheitslücken prüfen (Dependabot, pip-audit)
+- [x] Paketversionen festlegen und automatisch auf Sicherheitslücken prüfen (Dependabot, pip-audit)
 - [ ] Betrieb im Homelab
 - [x] Tag- und Nachtmodus
 - [ ] Fristen: Spalte „Frist“ auswerten, Anzeige „Diese Woche fällig“, Überfälliges hervorheben

@@ -1,0 +1,34 @@
+# Dependabot prüft jeden Montag, ob es neuere Versionen gibt, und öffnet
+# dafür Pull Requests. Die CI testet jeden davon automatisch.
+version: 2
+updates:
+  # Python-Pakete: genaue Versionen in requirements.txt und requirements-dev.txt
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    # Kleine Updates gebündelt in einem Pull Request, große Versionssprünge
+    # einzeln, damit man sie bewusst prüft
+    groups:
+      python-kleine-updates:
+        patterns: ["*"]
+        update-types: [minor, patch]
+    commit-message:
+      prefix: deps
+
+  # Versionen der GitHub Actions in .github/workflows
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: ci

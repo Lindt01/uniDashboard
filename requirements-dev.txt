@@ -1,2 +1,4 @@
-ruff>=0.6
-pytest>=8.0
+# Werkzeuge für Entwicklung und CI, mit festen Versionen (Dependabot hält sie aktuell)
+ruff==0.17.4
+pytest==9.2.0
+pip-audit==2.10.1

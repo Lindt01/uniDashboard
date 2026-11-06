@@ -4,6 +4,8 @@ excel_pfad.txt
 ~$*.xlsx
 
 __pycache__/
+*.egg-info/
+.env
 *.pyc
 .venv/
 venv/
