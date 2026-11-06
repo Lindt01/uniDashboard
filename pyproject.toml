@@ -22,7 +22,7 @@ convention = "google"
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
-testpaths = ["tests", "daten.py"]
+testpaths = ["tests", "daten.py", "grafiken.py", "themen.py"]
 addopts = "--doctest-modules"
 # Warnungen als Fehler: Hinweise auf künftige Änderungen in pandas & Co.
 # sollen auffallen, bevor sie zum Absturz führen.

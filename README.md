@@ -58,12 +58,13 @@ Die eigene `uni.xlsx` steht in `.gitignore` und wird nicht hochgeladen.
 
 ```
 app.py            Oberfläche (Streamlit)
-grafiken.py       Diagramme: Stundenplan, Wochenbalken, Fortschrittsringe
+grafiken.py       Diagramme, Fortschrittsringe und Aufgabentabelle
+themen.py         Farben für Tag- und Nachtmodus
 stil.css          Gestaltung (Karten, Kennzahlen, Ringe)
 starten.pyw       Start als Desktop-Programm
 daten.py          Einlesen und Aufbereiten der Excel-Blätter
 pyproject.toml    Projektdaten, ruff- und pytest-Einstellungen
-tests/            Tests für daten.py
+tests/            Tests für daten.py und themen.py
 .github/workflows CI: ruff und pytest bei jedem Push
 beispiel.xlsx     Beispieldaten
 .streamlit/       Theme, Schrift, Server-Einstellungen

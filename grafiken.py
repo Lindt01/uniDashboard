@@ -14,19 +14,15 @@ import pandas as pd
 import plotly.graph_objects as go
 
 import daten
+from themen import Thema
 
 
-# Farben und Schrift der Diagramme
-FARBE_ERLEDIGT = "#007aff"
-FARBE_OFFEN = "#ffffff"
-TEXT = "#1d1d1f"
-TEXT_LEISE = "#6e6e73"
-LINIE = "#f2f2f7"
+# Schrift der Diagramme; die Farben kommen aus dem Thema (themen.py)
 SCHRIFT = "Inter, -apple-system, 'Segoe UI', sans-serif"
 
 
 def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str],
-                       heute: date) -> go.Figure:
+                       heute: date, thema: Thema) -> go.Figure:
     """Zeichnet den Stundenplan als Wochenraster Mo–Fr, 8–20 Uhr.
 
     Jeder Termin ist ein abgerundeter Glasblock in der Fachfarbe.
@@ -38,6 +34,7 @@ def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str
         stundenplan: Ergebnis von :func:`daten.lade_stundenplan`.
         farbe_von: Liefert zu einem Fachnamen die Farbe als Hex-Wert.
         heute: Aktuelles Datum, für die Hervorhebung des Tages.
+        thema: Farben für Text, Raster und Tooltip.
 
     Returns:
         Fertige Plotly-Figur ohne Werkzeugleiste und Zoom.
@@ -47,7 +44,7 @@ def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str
 
     if heute.weekday() < 5:
         fig.add_vrect(x0=heute.weekday() - 0.5, x1=heute.weekday() + 0.5,
-                      fillcolor=FARBE_ERLEDIGT, opacity=0.05, line_width=0)
+                      fillcolor=thema.akzent, opacity=0.07, line_width=0)
 
     for _, t in termine.iterrows():
         tag = daten.WOCHENTAGE.index(t["Tag"])
@@ -61,7 +58,7 @@ def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str
         fig.add_shape(type="path", path=_abgerundet(x0, x1, y0, y1),
                       fillcolor=_rgba(farbe, 0.22), line=dict(color=_rgba(farbe, 0.45), width=1))
         fig.add_shape(type="path", path=_abgerundet(x0 + 0.006, x1 - 0.006, y0 + 0.03, y0 + (y1 - y0) * 0.45),
-                      fillcolor="rgba(255,255,255,0.35)", line_width=0)
+                      fillcolor=thema.glanz, opacity=0.3, line_width=0)
 
         # Kürzen nach verfügbarer Breite: parallele Termine haben nur
         # einen Bruchteil der Tagesspalte zur Verfügung.
@@ -77,8 +74,8 @@ def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str
             unterzeile += f" · {escape(t['Raum'])}"
         fig.add_annotation(
             x=x0 + 0.04, y=y0 + 0.1, xanchor="left", yanchor="top", align="left", showarrow=False,
-            text=f"<b>{name}</b><br><span style='color:{TEXT_LEISE}'>{unterzeile}</span>",
-            font=dict(size=11, color=TEXT))
+            text=f"<b>{name}</b><br><span style='color:{thema.text_leise}'>{unterzeile}</span>",
+            font=dict(size=11, color=thema.text))
 
         # Formen in Plotly zeigen keinen Tooltip. Ein unsichtbarer Punkt
         # in der Mitte des Blocks übernimmt das.
@@ -92,14 +89,15 @@ def stundenplan_grafik(stundenplan: pd.DataFrame, farbe_von: Callable[[str], str
     fig.update_layout(
         height=440, margin=dict(l=0, r=0, t=4, b=0), showlegend=False,
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        font=dict(family=SCHRIFT, color=TEXT_LEISE),
-        hoverlabel=dict(bgcolor="white", bordercolor=LINIE, font=dict(family=SCHRIFT, color=TEXT)),
+        font=dict(family=SCHRIFT, color=thema.text_leise),
+        hoverlabel=dict(bgcolor=thema.tooltip, bordercolor=thema.glas_rand,
+                        font=dict(family=SCHRIFT, color=thema.text)),
         xaxis=dict(range=[-0.5, 4.5], tickvals=list(range(5)), ticktext=daten.WOCHENTAGE,
                    side="top", showgrid=False, zeroline=False, fixedrange=True),
         # Achse umgedreht, damit der Morgen oben steht wie im Kalender
         yaxis=dict(range=[20.3, 7.7], tickvals=list(range(8, 21, 2)),
                    ticktext=[f"{h:02d}:00" for h in range(8, 21, 2)],
-                   gridcolor=LINIE, zeroline=False, fixedrange=True),
+                   gridcolor=thema.linie, zeroline=False, fixedrange=True),
     )
     return fig
 
@@ -131,12 +129,13 @@ def _abgerundet(x0: float, x1: float, y0: float, y1: float,
             f"Q {x0},{y1} {x0},{y1 - ry} L {x0},{y0 + ry} Q {x0},{y0} {x0 + rx},{y0} Z")
 
 
-def wochen_grafik(tabelle: pd.DataFrame) -> go.Figure:
+def wochen_grafik(tabelle: pd.DataFrame, thema: Thema) -> go.Figure:
     """Zeichnet je Vorlesungswoche eine Säule aus erledigt und offen.
 
     Args:
         tabelle: Aufgaben im gewählten Zeitraum, Ergebnis von
             :func:`daten.lade_aufgaben` nach Anwendung der Filter.
+        thema: Farben für Säulen, Text, Raster und Tooltip.
 
     Returns:
         Plotly-Figur mit gestapelten Säulen.
@@ -147,8 +146,8 @@ def wochen_grafik(tabelle: pd.DataFrame) -> go.Figure:
     wochen = "Woche " + zaehlung["Woche"].astype(str)
 
     fig = go.Figure()
-    glas = [("erledigt", _rgba(FARBE_ERLEDIGT, 0.6), _rgba(FARBE_ERLEDIGT, 0.9), "Erledigt"),
-            ("offen", _rgba(FARBE_OFFEN, 0.55), "rgba(0,0,0,0.08)", "Offen")]
+    glas = [("erledigt", _rgba(thema.akzent, 0.6), _rgba(thema.akzent, 0.9), "Erledigt"),
+            ("offen", thema.balken_offen, thema.glas_rand, "Offen")]
     for spalte, fuellung, rand, name in glas:
         fig.add_trace(go.Bar(
             name=name, x=wochen, y=zaehlung[spalte],
@@ -158,12 +157,13 @@ def wochen_grafik(tabelle: pd.DataFrame) -> go.Figure:
     fig.update_layout(
         barmode="stack", barcornerradius=6, bargap=0.45, height=300,
         margin=dict(l=0, r=0, t=30, b=0),
-        font=dict(family=SCHRIFT, size=12, color=TEXT_LEISE),
+        font=dict(family=SCHRIFT, size=12, color=thema.text_leise),
         plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
-        legend=dict(orientation="h", y=1.14, x=0, traceorder="normal"),
-        hoverlabel=dict(bgcolor="white", bordercolor=LINIE, font=dict(family=SCHRIFT, color=TEXT)),
+        legend=dict(orientation="h", y=1.14, x=0, traceorder="normal", font=dict(color=thema.text)),
+        hoverlabel=dict(bgcolor=thema.tooltip, bordercolor=thema.glas_rand,
+                        font=dict(family=SCHRIFT, color=thema.text)),
     )
-    raster = dict(gridcolor=LINIE, zeroline=False, fixedrange=True, rangemode="tozero")
+    raster = dict(gridcolor=thema.linie, zeroline=False, fixedrange=True, rangemode="tozero")
     # Bei wenigen Aufgaben ganze Zahlen erzwingen, sonst zeigt Plotly 0.5er-Schritte
     if zaehlung["gesamt"].max() <= 10:
         raster["dtick"] = 1
@@ -216,10 +216,37 @@ def ringe_html(tabelle: pd.DataFrame, farbe_von: Callable[[str], str]) -> str:
             f"<circle cx='42' cy='42' r='{radius}' fill='none' stroke='{farbe}' "
             f"stroke-opacity='0.16' stroke-width='{staerke}'/>{bogen}"
             f"<text x='42' y='47' text-anchor='middle' font-size='15' font-weight='600' "
-            f"fill='{TEXT}'>{z['erledigt']}/{z['gesamt']}</text></svg>"
+            f"class='zahl'>{z['erledigt']}/{z['gesamt']}</text></svg>"
             f"<div class='name'>{escape(z['Modul'])}</div>"
             f"<div class='anteil'>{anteil * 100:.0f} %</div></div>")
     return "<div class='ringe'>" + "".join(kacheln) + "</div>"
+
+
+def aufgaben_tabelle(tabelle: pd.DataFrame) -> str:
+    """Baut die Aufgabenliste als HTML-Tabelle.
+
+    Streamlits eigene Tabelle zeichnet auf eine Leinwand und lässt sich
+    nicht durchsichtig machen. Als HTML scheint das Glas durch, und
+    die Farben folgen dem Tag- oder Nachtmodus.
+
+    Args:
+        tabelle: Aufgaben in der gewünschten Reihenfolge, mit den
+            Spalten ``Modul``, ``Woche``, ``Erledigt`` und ``Notiz``.
+
+    Returns:
+        HTML-Baustein für :func:`html`; bei vielen Zeilen scrollt er.
+    """
+    if tabelle.empty:
+        return "<div class='leise'>Keine Aufgaben für diese Auswahl.</div>"
+    zeilen = []
+    for _, a in tabelle.iterrows():
+        status = ("<span class='status erledigt'>Erledigt</span>" if a["Erledigt"]
+                  else "<span class='status offen'>Offen</span>")
+        zeilen.append(f"<tr><td class='modul'>{escape(a['Modul'])}</td><td class='zahl'>{a['Woche']}</td>"
+                      f"<td>{status}</td><td>{escape(a['Notiz'])}</td></tr>")
+    return ("<div class='tabelle-rahmen'><table class='tabelle'>"
+            "<thead><tr><th>Modul</th><th class='zahl'>Woche</th><th>Status</th><th>Notiz</th></tr></thead>"
+            "<tbody>" + "".join(zeilen) + "</tbody></table></div>")
 
 
 # ---------------------------------------------------------------- Hilfen

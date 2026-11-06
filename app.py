@@ -18,6 +18,7 @@ import streamlit as st
 
 import daten
 import grafiken
+import themen
 
 ORDNER = Path(__file__).parent
 PFAD_DATEI = ORDNER / "excel_pfad.txt"
@@ -43,8 +44,6 @@ EXCEL = excel_finden()
 # Apple-Systemfarben. Jedes Fach behält seine Farbe überall (Stundenplan,
 # Fächerliste, Ringe), vergeben in der Reihenfolge des Blatts 'Fächer'.
 FARBEN = ["#007aff", "#ff9500", "#34c759", "#af52de", "#ff2d55", "#30b0c7", "#5856d6", "#ffcc00"]
-# Grundton des Glas-Hintergrunds; eine Zeile ändern, um die ganze Stimmung zu wechseln
-GRUNDTON = "#007aff"
 TAGNAMEN = ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"]
 OHNE_LEISTE = {"displayModeBar": False}
 
@@ -86,6 +85,44 @@ def html(text: str) -> None:
     st.markdown(text, unsafe_allow_html=True)
 
 
+def wochen_text(wochen: list[int]) -> str:
+    """Beschreibt eine Auswahl von Wochen kurz für die Überschrift.
+
+    Args:
+        wochen: Aufsteigend sortierte Wochennummern, mindestens eine.
+
+    Returns:
+        Zusammenhängende Wochen als Bereich, sonst als Aufzählung.
+
+    Example:
+        >>> wochen_text([1, 2, 3])
+        'Woche 1–3'
+        >>> wochen_text([1, 3])
+        'Woche 1, 3'
+    """
+    if len(wochen) == 1:
+        return f"Woche {wochen[0]}"
+    if wochen == list(range(wochen[0], wochen[-1] + 1)):
+        return f"Woche {wochen[0]}–{wochen[-1]}"
+    return "Woche " + ", ".join(map(str, wochen))
+
+
+def wahl_behalten(schluessel: str) -> None:
+    """Verhindert, dass ein Umschalter durch erneutes Klicken leer wird.
+
+    ``st.segmented_control`` wählt den aktiven Knopf ab, wenn man ihn
+    noch einmal anklickt. Als ``on_change`` eingetragen, setzt diese
+    Funktion dann die vorherige Wahl wieder ein.
+
+    Args:
+        schluessel: ``key`` des Umschalters in ``st.session_state``.
+    """
+    merker = f"{schluessel}_vorher"
+    if st.session_state[schluessel] is None:
+        st.session_state[schluessel] = st.session_state[merker]
+    st.session_state[merker] = st.session_state[schluessel]
+
+
 @st.fragment(run_every="3s")
 def auf_aenderung_pruefen(stand: float, tag: date) -> None:
     """Lädt die Seite neu, sobald die Excel gespeichert wurde oder ein neuer Tag beginnt.
@@ -105,9 +142,17 @@ def auf_aenderung_pruefen(stand: float, tag: date) -> None:
 # ---------------------------------------------------------------- Daten
 
 st.set_page_config(page_title="Uni WiSe 2026/27", layout="wide")
-html(f"<style>:root {{ --grundton: {GRUNDTON}; }}\n"
-     f"{(ORDNER / 'stil.css').read_text(encoding='utf-8')}</style>")
 
+# Startwerte der Umschalter, einmal pro Sitzung: Ansicht nach Uhrzeit,
+# Aufgaben gefiltert auf offene. Danach gilt, was angeklickt wurde.
+for schluessel, start in [("ansicht", themen.nach_uhrzeit(datetime.now()).name), ("status", "Offen")]:
+    st.session_state.setdefault(schluessel, start)
+    st.session_state.setdefault(f"{schluessel}_vorher", start)
+
+# Das Thema muss vor dem Umschalter feststehen, damit schon die ganze
+# Seite in den richtigen Farben gezeichnet wird.
+thema = themen.THEMEN[st.session_state["ansicht"]]
+html(f"<style>{thema.css()}\n{(ORDNER / 'stil.css').read_text(encoding='utf-8')}</style>")
 heute = date.today()
 auf_aenderung_pruefen(EXCEL.stat().st_mtime, heute)
 
@@ -129,9 +174,17 @@ kommende = pruefungen[pruefungen["Prüfungstermin"].dt.date >= heute]
 
 # ---------------------------------------------------------------- Kopf und Kennzahlen
 
-html("<h1 class='titel'>Wintersemester 2026/27</h1>"
-     f"<div class='untertitel'>{TAGNAMEN[heute.weekday()]}, {heute:%d.%m.%Y} · "
-     f"Vorlesungswoche {woche_jetzt}</div>")
+kopf, schalter = st.columns([3, 1], vertical_alignment="center")
+with schalter:
+    st.segmented_control(
+        "Ansicht", list(themen.THEMEN), key="ansicht", label_visibility="collapsed",
+        on_change=wahl_behalten, args=("ansicht",),
+        format_func=lambda n: {"Tag": ":material/light_mode: Tag", "Nacht": ":material/dark_mode: Nacht"}[n],
+    )
+with kopf:
+    html("<h1 class='titel'>Wintersemester 2026/27</h1>"
+         f"<div class='untertitel'>{TAGNAMEN[heute.weekday()]}, {heute:%d.%m.%Y} · "
+         f"Vorlesungswoche {woche_jetzt}</div>")
 
 offen_gesamt = int((~aufgaben["Erledigt"]).sum())
 erledigt_gesamt = int(aufgaben["Erledigt"].sum())
@@ -175,8 +228,8 @@ with links.container(key="karte_faecher"):
 
 with mitte.container(key="karte_stundenplan"):
     html("<div class='kartentitel'>Stundenplan</div>")
-    st.plotly_chart(grafiken.stundenplan_grafik(stundenplan, farbe_je_fach.get, heute),
-                    use_container_width=True, config=OHNE_LEISTE)
+    st.plotly_chart(grafiken.stundenplan_grafik(stundenplan, farbe_je_fach.get, heute, thema),
+                    width="stretch", config=OHNE_LEISTE)
 
 with rechts.container(key="karte_pruefungen"):
     zeilen = []
@@ -196,14 +249,18 @@ with rechts.container(key="karte_pruefungen"):
 with st.container(key="karte_aufgaben"):
     html("<div class='kartentitel'>Aufgaben</div>")
 
-    hoechste_woche = max(int(aufgaben["Woche"].max()), woche_jetzt, 2)
-    f1, f2, f3 = st.columns([2, 2, 1.3], gap="medium")
-    von, bis = f1.select_slider("Zeitraum", options=list(range(1, hoechste_woche + 1)),
-                                value=(1, hoechste_woche), format_func=lambda w: f"Woche {w}")
-    module = f2.multiselect("Module", sorted(aufgaben["Modul"].unique()), placeholder="Alle Module")
-    status = f3.segmented_control("Status", ["Alle", "Offen", "Erledigt"], default="Alle") or "Alle"
+    # Filter als Knöpfe zum Anklicken; nichts gewählt heißt jeweils "alle"
+    alle_wochen = list(range(1, max(int(aufgaben["Woche"].max()), woche_jetzt) + 1))
+    f1, f2 = st.columns([3, 1], gap="medium")
+    wochen = f1.pills("Wochen", alle_wochen, selection_mode="multi", key="filter_wochen",
+                      format_func=lambda w: f"Woche {w}" + (" · jetzt" if w == woche_jetzt else ""))
+    status = f2.segmented_control("Status", ["Alle", "Offen", "Erledigt"], key="status",
+                                  on_change=wahl_behalten, args=("status",))
+    module = st.pills("Module", sorted(aufgaben["Modul"].unique()), selection_mode="multi",
+                      key="filter_module")
 
-    auswahl = aufgaben[aufgaben["Woche"].between(von, bis)]
+    wochen = sorted(wochen) or alle_wochen
+    auswahl = aufgaben[aufgaben["Woche"].isin(wochen)]
     if module:
         auswahl = auswahl[auswahl["Modul"].isin(module)]
 
@@ -213,22 +270,12 @@ with st.container(key="karte_aufgaben"):
     elif status == "Erledigt":
         liste = liste[liste["Erledigt"]]
 
-    anzeige = liste.assign(Status=liste["Erledigt"].map({True: "Erledigt", False: "Offen"}))
-    anzeige = anzeige.sort_values(["Erledigt", "Woche", "Modul"])[["Modul", "Woche", "Status", "Notiz"]]
-    st.dataframe(
-        anzeige, hide_index=True, use_container_width=True,
-        height=min(38 + 35 * len(anzeige), 420),
-        column_config={
-            "Modul": st.column_config.TextColumn(width="small"),
-            "Woche": st.column_config.NumberColumn(width="small"),
-            "Status": st.column_config.TextColumn(width="small"),
-            "Notiz": st.column_config.TextColumn(width="large"),
-        },
-    )
+    anzeige = liste.sort_values(["Erledigt", "Woche", "Modul"])
+    html(grafiken.aufgaben_tabelle(anzeige))
 
 with st.container(key="karte_fortschritt"):
     erledigt = int(auswahl["Erledigt"].sum())
-    zeitraum = f"Woche {von}" if von == bis else f"Woche {von}–{bis}"
+    zeitraum = wochen_text(wochen)
     html(f"<div class='kartentitel'>Fortschritt {zeitraum}</div>")
     if len(auswahl):
         html(f"<div class='leise' style='margin:-6px 0 14px'>{erledigt} von {len(auswahl)} Aufgaben "
@@ -236,6 +283,6 @@ with st.container(key="karte_fortschritt"):
         g1, g2 = st.columns([1.3, 1], gap="large")
         with g1:
             html(grafiken.ringe_html(auswahl, farbe_je_fach.get))
-        g2.plotly_chart(grafiken.wochen_grafik(auswahl), use_container_width=True, config=OHNE_LEISTE)
+        g2.plotly_chart(grafiken.wochen_grafik(auswahl, thema), width="stretch", config=OHNE_LEISTE)
     else:
         html("<div class='leise'>Für diesen Zeitraum sind keine Aufgaben eingetragen.</div>")

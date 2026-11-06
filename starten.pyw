@@ -83,7 +83,12 @@ def fenster_oeffnen() -> None:
     if browser is None:
         webbrowser.open(ADRESSE)
     else:
-        subprocess.Popen([str(browser), f"--app={ADRESSE}"])
+        # Eigenes Profil, damit das Fenster ein eigener Browser-Prozess ist:
+        # Sonst übernimmt ein bereits laufendes Chrome das Öffnen und
+        # ignoriert --start-maximized. Das Profil liegt außerhalb des Repos.
+        profil = Path(os.environ.get("LOCALAPPDATA", ORDNER)) / "uniDashboard" / "browser"
+        subprocess.Popen([str(browser), f"--app={ADRESSE}", "--start-maximized",
+                          f"--user-data-dir={profil}", "--no-first-run", "--no-default-browser-check"])
 
 
 if not server_laeuft():
