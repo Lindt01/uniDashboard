@@ -10,10 +10,11 @@ das Dashboard liest sie bei jedem Neuladen ein.
 
 ## Funktionen
 
-- Stundenplan als Wochenraster, parallele Termine nebeneinander
+- Stundenplan als Wochenraster, parallele Termine nebeneinander, der heutige Tag hervorgehoben
 - Prüfungen mit Countdown, nicht feststehende Termine gesammelt
-- Aufgabenliste mit Filter nach Zeitraum (Vorlesungswochen), Modul und Status
-- Fortschrittsring je Fach und Säulen je Woche, passen sich dem gewählten Zeitraum an
+- Aufgabenliste mit Filtern zum Anklicken: Wochen, Module und Status (startet auf „Offen“)
+- Fortschrittsring je Fach und Säulen je Woche, passen sich den gewählten Filtern an
+- Tag- und Nachtmodus mit Glasflächen; beim Öffnen nach Uhrzeit gewählt (19–7 Uhr Nacht), jederzeit umschaltbar
 - Aktualisiert sich selbst, sobald die Excel-Datei gespeichert wird
 
 ## Starten
@@ -28,14 +29,23 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Ohne eigene `uni.xlsx` startet das Dashboard mit `beispiel.xlsx`.
+Das Dashboard sucht die Excel-Datei in dieser Reihenfolge:
+
+1. den Pfad in `excel_pfad.txt` im Projektordner, z. B. `C:\Users\name\Desktop\UNI.xlsx`
+   (so kann die Tabelle liegen, wo man will)
+2. `uni.xlsx` im Projektordner
+3. `beispiel.xlsx` mit Beispieldaten
 
 ### Als Desktop-Programm (Windows)
 
 Nach der Einrichtung oben einmal `verknuepfung_erstellen.bat` ausführen. Auf dem
 Desktop liegt dann „Uni-Dashboard“: startet den Server im Hintergrund (ohne
-Konsolenfenster) und öffnet das Dashboard als eigenes Fenster. Fehlermeldungen
-landen in `dashboard.log`.
+Konsolenfenster) und öffnet das Dashboard als eigenes, maximiertes Fenster.
+Fehlermeldungen landen in `dashboard.log`.
+
+Excel sperrt die Datei beim automatischen Speichern in OneDrive. Damit das
+Dashboard sie auch bei geöffneter Tabelle lesen kann, in Excel „Automatisches
+Speichern“ ausschalten und mit Strg+S speichern.
 
 ### Offline
 
@@ -50,9 +60,12 @@ Streamlit sind abgeschaltet.
 |---|---|
 | `Fächer` | Fächer, Vorlesung, Übung, Prüfung (z. B. `11.02, 9:00` oder `TBA`) |
 | `Stundenplan` | Fach, Art, Tag (`Mo`–`Fr`), Von, Bis, Raum |
-| `Aufgabenliste` | Modul, Woche, Status (`Done` oder `X`), Notiz |
+| `Aufgabenliste` | Modul, Woche, Status (`Done` oder `X`), Notiz; optional Frist (`\` = keine Frist) |
 
-Die eigene `uni.xlsx` steht in `.gitignore` und wird nicht hochgeladen.
+In der Aufgabenliste werden die Spalten über ihre Überschrift gefunden, weitere
+Spalten dürfen an beliebiger Stelle stehen.
+
+`uni.xlsx` und `excel_pfad.txt` stehen in `.gitignore` und werden nicht hochgeladen.
 
 ## Projektstruktur
 
@@ -60,7 +73,7 @@ Die eigene `uni.xlsx` steht in `.gitignore` und wird nicht hochgeladen.
 app.py            Oberfläche (Streamlit)
 grafiken.py       Diagramme, Fortschrittsringe und Aufgabentabelle
 themen.py         Farben für Tag- und Nachtmodus
-stil.css          Gestaltung (Karten, Kennzahlen, Ringe)
+stil.css          Gestaltung (Glasflächen, Karten, Filter), Farben aus themen.py
 starten.pyw       Start als Desktop-Programm
 daten.py          Einlesen und Aufbereiten der Excel-Blätter
 pyproject.toml    Projektdaten, ruff- und pytest-Einstellungen
@@ -89,7 +102,8 @@ pytest         # Tests in tests/ und Beispiele in den Docstrings
 - [x] GitHub Actions (Lint und Tests)
 - [ ] Paketversionen festlegen und automatisch auf Sicherheitslücken prüfen (Dependabot, pip-audit)
 - [ ] Betrieb im Homelab
-- [ ] Deadlines: Spalte „Fällig am“ in der Aufgabenliste, Anzeige „Diese Woche fällig“, Überfälliges hervorheben
+- [x] Tag- und Nachtmodus
+- [ ] Fristen: Spalte „Frist“ auswerten, Anzeige „Diese Woche fällig“, Überfälliges hervorheben
 - [ ] Wochenrückblick: erledigte Aufgaben der letzten Woche im Vergleich zur Vorwoche
 - [ ] Uni-Mails unten im Dashboard anzeigen (IMAP, nur lesend, Passwort in der Windows-Anmeldeinformationsverwaltung)
 
