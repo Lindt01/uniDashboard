@@ -152,7 +152,15 @@ for schluessel, start in [("ansicht", themen.nach_uhrzeit(datetime.now()).name),
 # Das Thema muss vor dem Umschalter feststehen, damit schon die ganze
 # Seite in den richtigen Farben gezeichnet wird.
 thema = themen.THEMEN[st.session_state["ansicht"]]
-html(f"<style>{thema.css()}\n{(PAKET / 'stil.css').read_text(encoding='utf-8')}</style>")
+# Beim ersten Seitenaufbau der Sitzung bauen sich die Flächen nacheinander
+# auf (aufbau.css). Bei jedem weiteren Durchlauf bleibt die Animation weg.
+# Alles steht in einem einzigen <style>-Element, damit Streamlit beim
+# nächsten Durchlauf nur dessen Inhalt tauscht und nichts neu zeichnet.
+stile = [thema.css(), (PAKET / "stil.css").read_text(encoding="utf-8")]
+if not st.session_state.get("aufgebaut"):
+    stile.append((PAKET / "aufbau.css").read_text(encoding="utf-8"))
+    st.session_state["aufgebaut"] = True
+html("<style>" + "\n".join(stile) + "</style>")
 heute = date.today()
 auf_aenderung_pruefen(EXCEL.stat().st_mtime, heute)
 

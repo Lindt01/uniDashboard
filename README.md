@@ -6,7 +6,7 @@ Wöchentlicher Überblick über mein Semester: Stundenplan, Prüfungstermine und
 offene Aufgaben auf einer Seite. Die Daten pflege ich in einer Excel-Datei,
 das Dashboard liest sie bei jedem Neuladen ein.
 
-![Screenshot](docs/screenshot.png)
+![Das Dashboard baut sich beim Öffnen auf (Beispieldaten)](docs/aufbau.gif)
 
 ## Funktionen
 
@@ -76,12 +76,13 @@ uni_dashboard/          Das Programm (Python-Paket)
   grafiken.py           Diagramme, Fortschrittsringe und Aufgabentabelle
   themen.py             Farben für Tag- und Nachtmodus
   stil.css              Gestaltung (Glasflächen, Karten, Filter)
+  aufbau.css            Kurze Aufbau-Animation beim ersten Öffnen
   static/fonts/         Schriften (lokal statt Google Fonts)
 windows/                Start als Desktop-Programm unter Windows
   starten.pyw           Server im Hintergrund starten, Fenster öffnen
   verknuepfung_erstellen.bat
 tests/                  Tests für daten.py und themen.py
-docs/                   Screenshot und Programmsymbol
+docs/                   Vorschau-GIF und Programmsymbol
 .github/workflows/      CI: ruff und pytest bei jedem Push
 .streamlit/             Theme, Schrift, Server-Einstellungen
 pyproject.toml          Projektdaten, Abhängigkeiten, ruff- und pytest-Einstellungen

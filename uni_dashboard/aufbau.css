@@ -1,0 +1,105 @@
+/* Aufbau beim ersten Öffnen, wie auf einer Baustelle, etwa fünf Sekunden:
+     1. Bauplan (0–2,5 s): Raster erscheint, alle Karten werden als
+        gestrichelte Umrisse gezogen, je Karte fährt ein Helfer den Rand ab.
+     2. Ausbau (2,5–4,5 s): Karte für Karte füllt sich das Glas, der
+        Inhalt erscheint und der Umriss verschwindet.
+     3. Abschluss (bis 5 s): Das Raster blendet aus.
+   app.py bindet diese Datei nur beim ersten Seitenaufbau einer Sitzung
+   ein. Beim automatischen Neuladen oder bei einem Klick baut sich nichts
+   neu auf. */
+
+/* ---------------------------------------------------------- Zeitplan */
+
+/* --t: Start des Umrisses (Bauplan), --f: Start der Füllung (Ausbau) */
+.kachel, [class*="st-key-karte"] { position: relative; }
+.kachel:nth-child(1)      { --t: 0.30s; --f: 2.40s; }
+.kachel:nth-child(2)      { --t: 0.45s; --f: 2.55s; }
+.kachel:nth-child(3)      { --t: 0.60s; --f: 2.70s; }
+.kachel:nth-child(4)      { --t: 0.75s; --f: 2.85s; }
+.st-key-karte_faecher     { --t: 0.95s; --f: 3.05s; }
+.st-key-karte_stundenplan { --t: 1.10s; --f: 3.20s; }
+.st-key-karte_pruefungen  { --t: 1.25s; --f: 3.35s; }
+.st-key-karte_aufgaben    { --t: 1.45s; --f: 3.55s; }
+.st-key-karte_fortschritt { --t: 1.60s; --f: 3.70s; }
+
+/* ---------------------------------------------------------- Bauplan-Raster */
+
+.stApp::before {
+    content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+        linear-gradient(color-mix(in srgb, var(--akzent) 22%, transparent) 1px, transparent 1px),
+        linear-gradient(90deg, color-mix(in srgb, var(--akzent) 22%, transparent) 1px, transparent 1px);
+    background-size: 32px 32px;
+    animation: raster 5s ease-in-out both;
+}
+@keyframes raster {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    75%  { opacity: 0.8; }
+    100% { opacity: 0; }
+}
+
+/* ---------------------------------------------------------- Kopf */
+
+@keyframes einblenden { from { opacity: 0; transform: translateY(8px); } }
+h1.titel, .untertitel, .st-key-ansicht { animation: einblenden 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.untertitel { animation-delay: 0.1s; }
+.st-key-ansicht { animation-delay: 2.2s; }
+
+/* ---------------------------------------------------------- 1. Bauplan */
+
+/* Gestrichelter Umriss: wird von links oben aus gezogen und bleibt
+   stehen, bis die Karte gefüllt ist. */
+.kachel::before, [class*="st-key-karte"]::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    border: 1.5px dashed color-mix(in srgb, var(--akzent) 70%, transparent);
+    animation: zeichnen 0.7s ease-out var(--t) both, wegblenden 0.5s ease-in calc(var(--f) + 0.3s) both;
+}
+@keyframes zeichnen { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0); } }
+@keyframes wegblenden { from { opacity: 1; } to { opacity: 0; } }
+
+/* Der Helfer: ein leuchtender Punkt, der einmal den Rand abfährt */
+.kachel::after, [class*="st-key-karte"]::after {
+    content: ""; position: absolute; top: 0; left: 0; width: 9px; height: 9px;
+    border-radius: 50%; pointer-events: none; z-index: 2;
+    background: var(--akzent);
+    box-shadow: 0 0 10px 2px color-mix(in srgb, var(--akzent) 70%, transparent);
+    offset-path: border-box; offset-rotate: 0deg;
+    animation: helfer 1.2s cubic-bezier(0.45, 0, 0.3, 1) var(--t) both;
+}
+@keyframes helfer {
+    0%   { offset-distance: 0%; opacity: 0; transform: scale(0.4); }
+    8%   { opacity: 1; transform: scale(1); }
+    88%  { opacity: 1; }
+    100% { offset-distance: 100%; opacity: 0; transform: scale(0.4); }
+}
+
+/* ---------------------------------------------------------- 2. Ausbau */
+
+/* Glas füllt sich. Nur "from" ist angegeben: Am Ende steht genau das
+   Aussehen aus stil.css. */
+.kachel, [class*="st-key-karte"] { animation: glas 0.6s ease-out var(--f) both; }
+@keyframes glas {
+    from { background-color: transparent; box-shadow: none;
+           -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+.kachel > *, [class*="st-key-karte"] > * {
+    animation: inhalt 0.5s ease-out calc(var(--f) + 0.25s) both;
+}
+@keyframes inhalt { from { opacity: 0; transform: translateY(6px); } }
+
+/* Diagramme lädt Streamlit etwas später nach: weich einblenden statt
+   eines grauen Platzhalters. */
+[data-testid="stPlotlyChart"] { animation: inhalt 0.5s ease-out both; }
+[class*="st-key-karte"] [data-testid="stSkeleton"] { visibility: hidden; }
+
+/* ---------------------------------------------------------- Ohne Animation */
+
+/* Wer in Windows "Animationen anzeigen" ausgeschaltet hat, sieht die
+   Seite sofort fertig. */
+@media (prefers-reduced-motion: reduce) {
+    .stApp::before, .kachel::before, .kachel::after,
+    [class*="st-key-karte"]::before, [class*="st-key-karte"]::after { display: none; }
+    h1.titel, .untertitel, .st-key-ansicht, .kachel, [class*="st-key-karte"],
+    .kachel > *, [class*="st-key-karte"] > *, [data-testid="stPlotlyChart"] { animation: none; }
+}
