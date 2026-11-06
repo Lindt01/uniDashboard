@@ -203,7 +203,8 @@ kacheln = [
     ("Offene Aufgaben", offen_gesamt, f"von {len(aufgaben)} insgesamt"),
     ("Erledigt", f"{quote:.0f} %", f"{erledigt_gesamt} Aufgaben"),
     ("Nächste Prüfung", pruefung_wert, pruefung_zusatz),
-    ("Heute", "frei" if not len(heute_faecher) else f"{len(heute_faecher)} Fächer",
+    ("Heute", "frei" if not len(heute_faecher)
+     else f"{len(heute_faecher)} {'Fach' if len(heute_faecher) == 1 else 'Fächer'}",
      ", ".join(heute_faecher) or "keine Veranstaltungen"),
 ]
 html("<div class='kacheln'>" + "".join(
