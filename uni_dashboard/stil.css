@@ -168,7 +168,17 @@ h1.titel {
 }
 [data-testid="stButtonGroup"] button p { color: inherit !important; }
 
-/* Hinweisbox (z. B. wenn die Excel gerade gespeichert wird) */
+/* Hinweisbox (z. B. wenn die Excel gerade gespeichert wird).
+   Ein farbiger Rand links zeigt, wie ernst es ist: orange = Hinweis,
+   rot = Fehler, ohne Daten keine Anzeige. */
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) > div {
+    box-shadow: inset 4px 0 0 #ff9f0a, var(--glas-kante) !important;
+}
+[data-testid="stAlert"]:has([data-testid="stAlertContentError"]) > div {
+    box-shadow: inset 4px 0 0 #ff3b30, var(--glas-kante) !important;
+}
+[data-testid="stAlertContentWarning"] [data-testid="stIconMaterial"] { color: #ff9f0a; }
+[data-testid="stAlertContentError"] [data-testid="stIconMaterial"] { color: #ff3b30; }
 [data-testid="stAlert"] > div {
     background: var(--glas) !important; color: var(--text) !important;
     -webkit-backdrop-filter: var(--glas-filter); backdrop-filter: var(--glas-filter);

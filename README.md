@@ -16,6 +16,22 @@ das Dashboard liest sie bei jedem Neuladen ein.
 - Fortschrittsring je Fach und Säulen je Woche, passen sich den gewählten Filtern an
 - Tag- und Nachtmodus mit Glasflächen; beim Öffnen nach Uhrzeit gewählt (19–7 Uhr Nacht), jederzeit umschaltbar
 - Aktualisiert sich selbst, sobald die Excel-Datei gespeichert wird
+- Verständliche Fehlermeldungen, wenn in der Excel etwas nicht passt (mit Blatt,
+  Zeile und Wert). Bis zur Korrektur bleibt der letzte gute Stand sichtbar, eine
+  kurz gesperrte Datei wird automatisch erneut gelesen
+
+## Ablauf
+
+Vom Klick auf die Desktop-Verknüpfung bis zum laufenden Dashboard, als
+UML-Aktivitätsdiagramm. Streamlit baut die Seite bei jeder Änderung komplett neu
+auf, die Aufbau-Animation läuft aber nur beim ersten Mal.
+
+![Aktivitätsdiagramm](docs/diagramme/ablauf.drawio.svg)
+
+Das Diagramm ist mit [draw.io](https://www.drawio.com) erstellt. Die Datei
+[`docs/diagramme/ablauf.drawio.svg`](docs/diagramme/ablauf.drawio.svg) ist Bild
+und Quelle zugleich: draw.io (oder die VS-Code-Erweiterung „Draw.io Integration“)
+öffnet sie direkt zum Bearbeiten.
 
 ## Starten
 
@@ -82,7 +98,7 @@ windows/                Start als Desktop-Programm unter Windows
   starten.pyw           Server im Hintergrund starten, Fenster öffnen
   verknuepfung_erstellen.bat
 tests/                  Tests für daten.py und themen.py
-docs/                   Vorschau-GIF und Programmsymbol
+docs/                   Vorschau-GIF, Aktivitätsdiagramm (draw.io), Programmsymbol
 .github/workflows/      CI: ruff und pytest bei jedem Push
 .streamlit/             Theme, Schrift, Server-Einstellungen
 pyproject.toml          Projektdaten, Abhängigkeiten, ruff- und pytest-Einstellungen

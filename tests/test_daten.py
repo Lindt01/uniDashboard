@@ -155,3 +155,133 @@ def test_beispieldatei_ist_vollstaendig_lesbar():
     assert len(aufgaben) > 0 and len(faecher) > 0 and len(plan) > 0
     assert set(plan["Tag"]) <= set(daten.WOCHENTAGE)
     assert (plan["Von"] < plan["Bis"]).all()
+
+
+# ---------------------------------------------------------------- Fehlermeldungen
+
+AUFGABEN_KOPF = ["Modul", "Woche", "Status", "Notiz"]
+PLAN_KOPF = ["Fach", "Art", "Tag", "Von", "Bis", "Raum"]
+
+
+def test_fehlende_spalte_wird_mit_namen_gemeldet(tmp_path):
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [
+        ["Modul", "Woche", "Status", "Frist"],
+        ["Mathe", 1, "X", "\\"],
+    ]})
+    with pytest.raises(daten.TabellenFehler, match="fehlt die Spalte „Notiz“") as info:
+        daten.lade_aufgaben(pfad)
+    assert "Aufgabenliste" in str(info.value)
+
+
+def test_mehrere_fehlende_spalten_stehen_alle_in_der_meldung(tmp_path):
+    pfad = excel_anlegen(tmp_path / "s.xlsx", {"Stundenplan": [["Fach", "Tag"], ["Mathe", "Mo"]]})
+    with pytest.raises(daten.TabellenFehler, match="die Spalten „Art“, „Von“, „Bis“, „Raum“"):
+        daten.lade_stundenplan(pfad)
+
+
+def test_fehlendes_blatt_wird_gemeldet(tmp_path):
+    pfad = excel_anlegen(tmp_path / "x.xlsx", {"Aufgaben": [AUFGABEN_KOPF]})
+    with pytest.raises(daten.TabellenFehler, match="fehlt das Blatt „Aufgabenliste“"):
+        daten.lade_aufgaben(pfad)
+
+
+@pytest.mark.parametrize("woche, erwartet", [("zwei", "„zwei“"), (None, "leer"), (1.5, "„1.5“")])
+def test_ungueltige_woche_nennt_zeile_und_wert(tmp_path, woche, erwartet):
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [
+        AUFGABEN_KOPF,
+        ["Mathe", 1, "Done", "ok"],
+        ["AI", woche, "X", "kaputt"],
+    ]})
+    with pytest.raises(daten.TabellenFehler, match=f"Zeile 3 \\(AI\\), ist die Woche keine ganze Zahl: {erwartet}"):
+        daten.lade_aufgaben(pfad)
+
+
+def test_ganze_zahl_als_kommazahl_ist_erlaubt(tmp_path):
+    # Excel speichert Zahlen oft als 2.0
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [AUFGABEN_KOPF, ["Mathe", 2.0, "X", ""]]})
+    assert daten.lade_aufgaben(pfad)["Woche"].tolist() == [2]
+
+
+def test_ungueltiger_tag_im_stundenplan(tmp_path):
+    pfad = excel_anlegen(tmp_path / "s.xlsx", {"Stundenplan": [
+        PLAN_KOPF, ["Mathe", "VL", "Montag", time(8, 0), time(10, 0), None],
+    ]})
+    with pytest.raises(daten.TabellenFehler, match="Zeile 2 \\(Mathe\\), steht beim Tag „Montag“"):
+        daten.lade_stundenplan(pfad)
+
+
+def test_tag_mit_leerzeichen_wird_akzeptiert(tmp_path):
+    pfad = excel_anlegen(tmp_path / "s.xlsx", {"Stundenplan": [
+        PLAN_KOPF, ["Mathe", "VL", "Mo ", time(8, 0), time(10, 0), None],
+    ]})
+    assert daten.lade_stundenplan(pfad)["Tag"].tolist() == ["Mo"]
+
+
+def test_ungueltige_uhrzeit_im_stundenplan(tmp_path):
+    pfad = excel_anlegen(tmp_path / "s.xlsx", {"Stundenplan": [
+        PLAN_KOPF, ["Mathe", "VL", "Mo", "8 Uhr", time(10, 0), None],
+    ]})
+    with pytest.raises(daten.TabellenFehler, match="bei „Von“ keine Uhrzeit eingetragen: „8 Uhr“"):
+        daten.lade_stundenplan(pfad)
+
+
+def test_tabellenfehler_ist_auch_ein_valueerror():
+    assert issubclass(daten.TabellenFehler, ValueError)
+    assert issubclass(daten.TabellenFehler, daten.ExcelFehler)
+
+
+# ---------------------------------------------------------------- Fehlerarten beim Laden
+
+def test_lade_alles_liefert_alle_blaetter():
+    tabellen = daten.lade_alles(BEISPIEL)
+    assert len(tabellen.aufgaben) and len(tabellen.faecher) and len(tabellen.stundenplan)
+
+
+def test_fehlende_datei(tmp_path):
+    with pytest.raises(daten.DateiFehlt, match="weg.xlsx wurde nicht gefunden"):
+        daten.lade_alles(tmp_path / "weg.xlsx")
+
+
+def test_halb_geschriebene_datei_gilt_als_voruebergehend(tmp_path):
+    # Während Excel speichert, ist die .xlsx kurz kein gültiges ZIP-Archiv
+    pfad = tmp_path / "halb.xlsx"
+    pfad.write_bytes(b"PK\x03\x04 abgebrochen")
+    with pytest.raises(daten.DateiGesperrt, match="wird gerade geschrieben"):
+        daten.lade_alles(pfad)
+
+
+def test_gesperrte_datei_gilt_als_voruebergehend(monkeypatch):
+    def gesperrt(*args, **kwargs):
+        raise PermissionError(13, "Permission denied")
+    monkeypatch.setattr(daten.pd, "read_excel", gesperrt)
+    with pytest.raises(daten.DateiGesperrt, match="Automatisches Speichern"):
+        daten.lade_alles(BEISPIEL)
+
+
+# ---------------------------------------------------------------- Excel finden
+
+def test_excel_pfad_txt_hat_vorrang(tmp_path):
+    eigene = excel_anlegen(tmp_path / "Meine.xlsx", {"x": [[1]]})
+    (tmp_path / "uni.xlsx").write_bytes(b"")
+    (tmp_path / "excel_pfad.txt").write_text(f'"{eigene}"\n', encoding="utf-8-sig")
+    assert daten.excel_finden(tmp_path) == (eigene, None)
+
+
+def test_falscher_pfad_wird_gemeldet_statt_still_ersetzt(tmp_path):
+    (tmp_path / "excel_pfad.txt").write_text(str(tmp_path / "gibtsnicht.xlsx"), encoding="utf-8")
+    pfad, hinweis = daten.excel_finden(tmp_path)
+    assert pfad == tmp_path / "beispiel.xlsx"
+    assert "gibtsnicht.xlsx" in hinweis and "diese Datei gibt es nicht" in hinweis
+    assert hinweis.endswith("Angezeigt wird stattdessen beispiel.xlsx.")
+
+
+def test_leere_excel_pfad_txt(tmp_path):
+    (tmp_path / "excel_pfad.txt").write_text("\n", encoding="utf-8")
+    (tmp_path / "uni.xlsx").write_bytes(b"")
+    pfad, hinweis = daten.excel_finden(tmp_path)
+    assert pfad == tmp_path / "uni.xlsx"
+    assert hinweis.startswith("excel_pfad.txt ist leer.")
+
+
+def test_ohne_excel_pfad_txt_gibt_es_keinen_hinweis(tmp_path):
+    assert daten.excel_finden(tmp_path) == (tmp_path / "beispiel.xlsx", None)

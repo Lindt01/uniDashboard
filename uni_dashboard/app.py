@@ -9,7 +9,7 @@ Start (im Projektordner):
     streamlit run uni_dashboard/app.py
 """
 
-import zipfile
+import time
 from datetime import date, datetime
 from html import escape
 from pathlib import Path
@@ -21,25 +21,10 @@ from uni_dashboard import daten, grafiken, themen
 PAKET = Path(__file__).resolve().parent
 # Eigene Daten liegen im Projektordner, nicht im Paket
 PROJEKT = PAKET.parent
-PFAD_DATEI = PROJEKT / "excel_pfad.txt"
-
-
-def excel_finden() -> Path:
-    """Sucht die Excel: Pfad aus excel_pfad.txt, sonst uni.xlsx, sonst beispiel.xlsx.
-
-    Returns:
-        Pfad zur Excel-Datei, die geladen werden soll.
-    """
-    if PFAD_DATEI.exists():
-        eigener = Path(PFAD_DATEI.read_text(encoding="utf-8").strip().strip('"'))
-        if eigener.exists():
-            return eigener
-    if (PROJEKT / "uni.xlsx").exists():
-        return PROJEKT / "uni.xlsx"
-    return PROJEKT / "beispiel.xlsx"
-
-
-EXCEL = excel_finden()
+EXCEL, PFAD_HINWEIS = daten.excel_finden(PROJEKT)
+# Sekunden bis zum nächsten Leseversuch, wenn die Excel gesperrt war.
+# (Kein Docstring: Freistehende Texte zeigt Streamlit auf der Seite an.)
+NEUER_VERSUCH_NACH = 3.0
 
 # Apple-Systemfarben. Jedes Fach behält seine Farbe überall (Stundenplan,
 # Fächerliste, Ringe), vergeben in der Reihenfolge des Blatts 'Fächer'.
@@ -123,19 +108,41 @@ def wahl_behalten(schluessel: str) -> None:
     st.session_state[merker] = st.session_state[schluessel]
 
 
+def aenderungszeit(pfad: Path) -> float:
+    """Liefert die Änderungszeit einer Datei, 0 wenn es sie (gerade) nicht gibt.
+
+    Args:
+        pfad: Zu prüfende Datei.
+
+    Returns:
+        Zeitstempel der letzten Änderung in Sekunden.
+    """
+    try:
+        return pfad.stat().st_mtime
+    except OSError:
+        return 0.0
+
+
 @st.fragment(run_every="3s")
-def auf_aenderung_pruefen(stand: float, tag: date) -> None:
-    """Lädt die Seite neu, sobald die Excel gespeichert wurde oder ein neuer Tag beginnt.
+def auf_aenderung_pruefen(stand: float, tag: date, erneut_versuchen: bool) -> None:
+    """Lädt die Seite neu, wenn sich etwas geändert hat oder ein neuer Versuch fällig ist.
 
     Als Fragment läuft die Funktion alle 3 Sekunden für sich allein,
-    ohne die ganze Seite neu aufzubauen. Erst bei einer Änderung wird
-    die komplette Seite neu ausgeführt.
+    ohne die ganze Seite neu aufzubauen. Die komplette Seite wird neu
+    ausgeführt, wenn die Excel gespeichert wurde, ein neuer Tag beginnt
+    oder die Datei beim letzten Mal nur vorübergehend gesperrt war.
 
     Args:
         stand: Änderungszeit der Excel beim letzten Seitenaufbau.
         tag: Datum beim letzten Seitenaufbau.
+        erneut_versuchen: True, wenn das letzte Laden an einer Sperre
+            gescheitert ist (:class:`daten.DateiGesperrt`).
     """
-    if EXCEL.stat().st_mtime != stand or date.today() != tag:
+    # Streamlit führt ein Fragment beim Seitenaufbau sofort einmal mit aus.
+    # Ohne diese Wartezeit würde ein gesperrtes Laden die Seite in einer
+    # Endlosschleife neu starten, bevor der Hinweis überhaupt erscheint.
+    faellig = time.monotonic() - st.session_state.get("letzter_lauf", 0.0) >= NEUER_VERSUCH_NACH
+    if (erneut_versuchen and faellig) or aenderungszeit(EXCEL) != stand or date.today() != tag:
         st.rerun(scope="app")
 
 
@@ -162,23 +169,21 @@ if not st.session_state.get("aufgebaut"):
     st.session_state["aufgebaut"] = True
 html("<style>" + "\n".join(stile) + "</style>")
 heute = date.today()
-auf_aenderung_pruefen(EXCEL.stat().st_mtime, heute)
-
-try:
-    aufgaben = daten.lade_aufgaben(EXCEL)
-    faecher = daten.lade_faecher(EXCEL)
-    stundenplan = daten.lade_stundenplan(EXCEL)
-except (OSError, ValueError, KeyError, zipfile.BadZipFile) as fehler:
-    # z. B. während Excel gerade speichert
-    st.info(f"{EXCEL.name} konnte gerade nicht gelesen werden ({fehler}). Neuer Versuch in wenigen Sekunden.")
-    st.stop()
 woche_jetzt = daten.aktuelle_woche(heute)
 
-alle_module = list(dict.fromkeys(list(faecher["Fach"]) + list(aufgaben["Modul"])))
-farbe_je_fach = {fach: FARBEN[i % len(FARBEN)] for i, fach in enumerate(alle_module)}
-
-pruefungen = faecher.dropna(subset=["Prüfungstermin"]).sort_values("Prüfungstermin")
-kommende = pruefungen[pruefungen["Prüfungstermin"].dt.date >= heute]
+# Laden. Gelingt es, wird der Stand für später gemerkt. Scheitert es, zeigt
+# das Dashboard den letzten guten Stand mit einem Hinweis, statt leer zu werden.
+stand = aenderungszeit(EXCEL)
+st.session_state["letzter_lauf"] = time.monotonic()
+try:
+    tabellen = daten.lade_alles(EXCEL)
+    st.session_state["letzter_stand"] = (tabellen, datetime.now())
+    fehler = None
+except daten.ExcelFehler as ausnahme:
+    fehler = ausnahme
+# Eine Sperre geht von selbst vorbei: dann alle 3 s neu versuchen. Bei einem
+# Fehler in der Tabelle erst wieder, wenn sie gespeichert wurde.
+auf_aenderung_pruefen(stand, heute, erneut_versuchen=isinstance(fehler, daten.DateiGesperrt))
 
 # ---------------------------------------------------------------- Kopf und Kennzahlen
 
@@ -193,6 +198,30 @@ with kopf:
     html("<h1 class='titel'>Wintersemester 2026/27</h1>"
          f"<div class='untertitel'>{TAGNAMEN[heute.weekday()]}, {heute:%d.%m.%Y} · "
          f"Vorlesungswoche {woche_jetzt}</div>")
+
+# ---------------------------------------------------------------- Hinweise
+
+if PFAD_HINWEIS:
+    st.warning(PFAD_HINWEIS, icon=":material/folder_off:")
+if fehler:
+    gesperrt = isinstance(fehler, daten.DateiGesperrt)
+    weiter = ("Neuer Versuch läuft automatisch." if gesperrt
+              else "Nach dem Korrigieren und Speichern lädt das Dashboard von selbst neu.")
+    letzter = st.session_state.get("letzter_stand")
+    if letzter is None:
+        # Noch nie erfolgreich geladen: nichts, was man zeigen könnte
+        st.error(f"{fehler} {weiter}", icon=":material/error:")
+        st.stop()
+    tabellen, geladen_um = letzter
+    st.warning(f"{fehler} {weiter} Angezeigt wird der Stand von {geladen_um:%H:%M} Uhr.",
+               icon=":material/hourglass_top:" if gesperrt else ":material/edit_note:")
+aufgaben, faecher, stundenplan = tabellen.aufgaben, tabellen.faecher, tabellen.stundenplan
+
+alle_module = list(dict.fromkeys(list(faecher["Fach"]) + list(aufgaben["Modul"])))
+farbe_je_fach = {fach: FARBEN[i % len(FARBEN)] for i, fach in enumerate(alle_module)}
+
+pruefungen = faecher.dropna(subset=["Prüfungstermin"]).sort_values("Prüfungstermin")
+kommende = pruefungen[pruefungen["Prüfungstermin"].dt.date >= heute]
 
 offen_gesamt = int((~aufgaben["Erledigt"]).sum())
 erledigt_gesamt = int(aufgaben["Erledigt"].sum())
