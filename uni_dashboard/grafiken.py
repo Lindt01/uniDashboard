@@ -13,8 +13,8 @@ from html import escape
 import pandas as pd
 import plotly.graph_objects as go
 
-import daten
-from themen import Thema
+from uni_dashboard import daten
+from uni_dashboard.themen import Thema
 
 
 # Schrift der Diagramme; die Farben kommen aus dem Thema (themen.py)

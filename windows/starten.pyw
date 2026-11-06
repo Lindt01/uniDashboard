@@ -14,7 +14,8 @@ import time
 import webbrowser
 from pathlib import Path
 
-ORDNER = Path(__file__).parent
+# Das Skript liegt in windows/, gestartet wird aus dem Projektordner darüber
+ORDNER = Path(__file__).resolve().parent.parent
 PORT = 8501
 ADRESSE = f"http://localhost:{PORT}"
 
@@ -41,7 +42,7 @@ def server_starten() -> None:
     # unterdrücktem Fenster.
     python = Path(sys.executable).with_name("python.exe")
     protokoll = open(ORDNER / "dashboard.log", "w", encoding="utf-8")
-    subprocess.Popen([str(python), "-m", "streamlit", "run", "app.py"],
+    subprocess.Popen([str(python), "-m", "streamlit", "run", "uni_dashboard/app.py"],
                      cwd=ORDNER, stdout=protokoll, stderr=subprocess.STDOUT,
                      creationflags=subprocess.CREATE_NO_WINDOW)
     for _ in range(60):

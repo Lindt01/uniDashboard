@@ -12,7 +12,7 @@ import openpyxl
 import pandas as pd
 import pytest
 
-import daten
+from uni_dashboard import daten
 
 BEISPIEL = Path(__file__).parent.parent / "beispiel.xlsx"
 

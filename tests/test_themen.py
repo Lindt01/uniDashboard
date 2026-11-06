@@ -5,7 +5,7 @@ from datetime import datetime
 
 import pytest
 
-import themen
+from uni_dashboard import themen
 
 
 @pytest.mark.parametrize(("stunde", "erwartet"), [

@@ -1,9 +1,12 @@
 @echo off
 rem Legt eine Verknuepfung "Uni-Dashboard" auf dem Desktop an.
-cd /d "%~dp0"
+rem Das Skript liegt in windows\, alle Pfade beziehen sich auf den Projektordner darueber.
+pushd "%~dp0.."
+set "PROJEKT=%CD%"
+popd
 
-if not exist ".venv\Scripts\pythonw.exe" (
-    echo .venv fehlt. Bitte zuerst einrichten:
+if not exist "%PROJEKT%\.venv\Scripts\pythonw.exe" (
+    echo .venv fehlt. Bitte zuerst im Projektordner einrichten:
     echo   python -m venv .venv
     echo   .venv\Scripts\activate
     echo   pip install -r requirements.txt
@@ -14,10 +17,10 @@ if not exist ".venv\Scripts\pythonw.exe" (
 powershell -NoProfile -Command ^
   "$ziel = [Environment]::GetFolderPath('Desktop') + '\Uni-Dashboard.lnk';" ^
   "$v = (New-Object -ComObject WScript.Shell).CreateShortcut($ziel);" ^
-  "$v.TargetPath = '%~dp0.venv\Scripts\pythonw.exe';" ^
-  "$v.Arguments = 'starten.pyw';" ^
-  "$v.WorkingDirectory = '%~dp0';" ^
-  "$v.IconLocation = '%~dp0docs\icon.ico';" ^
+  "$v.TargetPath = '%PROJEKT%\.venv\Scripts\pythonw.exe';" ^
+  "$v.Arguments = 'windows\starten.pyw';" ^
+  "$v.WorkingDirectory = '%PROJEKT%';" ^
+  "$v.IconLocation = '%PROJEKT%\docs\icon.ico';" ^
   "$v.Description = 'Uni-Dashboard';" ^
   "$v.Save()"
 

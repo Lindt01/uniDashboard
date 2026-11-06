@@ -1,4 +1,3 @@
-streamlit>=1.51
-pandas>=2.0
-openpyxl>=3.1
-plotly>=5.21
+# Installiert das Projekt samt Abhängigkeiten (stehen in pyproject.toml).
+# -e: Änderungen am Code wirken sofort, ohne neu zu installieren.
+-e .

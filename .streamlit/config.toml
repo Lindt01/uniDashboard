@@ -20,7 +20,8 @@ headless = true
 port = 8501
 # nur von diesem PC erreichbar, nicht aus dem WLAN
 address = "localhost"
-# Schriften aus static/fonts statt von Google Fonts
+# Schriften aus uni_dashboard/static/fonts statt von Google Fonts
+# (Streamlit liefert den Ordner static/ neben app.py unter app/static/ aus)
 enableStaticServing = true
 
 [[theme.fontFaces]]

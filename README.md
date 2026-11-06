@@ -25,8 +25,8 @@ Voraussetzung: Python 3.10 oder neuer.
 python -m venv .venv
 .venv\Scripts\activate          # Windows
 # source .venv/bin/activate     # Linux/macOS
-pip install -r requirements.txt
-streamlit run app.py
+pip install -r requirements.txt   # installiert das Projekt samt Abhängigkeiten
+streamlit run uni_dashboard/app.py
 ```
 
 Das Dashboard sucht die Excel-Datei in dieser Reihenfolge:
@@ -38,7 +38,7 @@ Das Dashboard sucht die Excel-Datei in dieser Reihenfolge:
 
 ### Als Desktop-Programm (Windows)
 
-Nach der Einrichtung oben einmal `verknuepfung_erstellen.bat` ausführen. Auf dem
+Nach der Einrichtung oben einmal `windows\verknuepfung_erstellen.bat` ausführen. Auf dem
 Desktop liegt dann „Uni-Dashboard“: startet den Server im Hintergrund (ohne
 Konsolenfenster) und öffnet das Dashboard als eigenes, maximiertes Fenster.
 Fehlermeldungen landen in `dashboard.log`.
@@ -51,7 +51,7 @@ Speichern“ ausschalten und mit Strg+S speichern.
 
 Nach der Installation der Pakete braucht das Dashboard kein Internet. Der Server
 lauscht nur auf `localhost` (nicht im WLAN erreichbar), die Schriften liegen in
-`static/fonts` (Inter und IBM Plex Mono, SIL Open Font License) und Nutzungsstatistiken von
+`uni_dashboard/static/fonts` (Inter und IBM Plex Mono, SIL Open Font License) und Nutzungsstatistiken von
 Streamlit sind abgeschaltet.
 
 ## Aufbau der Excel-Datei
@@ -70,18 +70,22 @@ Spalten dürfen an beliebiger Stelle stehen.
 ## Projektstruktur
 
 ```
-app.py            Oberfläche (Streamlit)
-grafiken.py       Diagramme, Fortschrittsringe und Aufgabentabelle
-themen.py         Farben für Tag- und Nachtmodus
-stil.css          Gestaltung (Glasflächen, Karten, Filter), Farben aus themen.py
-starten.pyw       Start als Desktop-Programm
-daten.py          Einlesen und Aufbereiten der Excel-Blätter
-pyproject.toml    Projektdaten, ruff- und pytest-Einstellungen
-tests/            Tests für daten.py und themen.py
-.github/workflows CI: ruff und pytest bei jedem Push
-beispiel.xlsx     Beispieldaten
-.streamlit/       Theme, Schrift, Server-Einstellungen
-static/fonts/     Schriften (lokal statt Google Fonts)
+uni_dashboard/          Das Programm (Python-Paket)
+  app.py                Streamlit-Seite: Kopf, Kennzahlen, Stundenplan, Aufgaben
+  daten.py              Einlesen und Aufbereiten der Excel-Blätter
+  grafiken.py           Diagramme, Fortschrittsringe und Aufgabentabelle
+  themen.py             Farben für Tag- und Nachtmodus
+  stil.css              Gestaltung (Glasflächen, Karten, Filter)
+  static/fonts/         Schriften (lokal statt Google Fonts)
+windows/                Start als Desktop-Programm unter Windows
+  starten.pyw           Server im Hintergrund starten, Fenster öffnen
+  verknuepfung_erstellen.bat
+tests/                  Tests für daten.py und themen.py
+docs/                   Screenshot und Programmsymbol
+.github/workflows/      CI: ruff und pytest bei jedem Push
+.streamlit/             Theme, Schrift, Server-Einstellungen
+pyproject.toml          Projektdaten, Abhängigkeiten, ruff- und pytest-Einstellungen
+beispiel.xlsx           Beispieldaten
 ```
 
 ## Entwicklung
@@ -109,5 +113,5 @@ pytest         # Tests in tests/ und Beispiele in den Docstrings
 
 ## Lizenz
 
-Code unter der [MIT-Lizenz](LICENSE). Die Schriften in `static/fonts` stehen
+Code unter der [MIT-Lizenz](LICENSE). Die Schriften in `uni_dashboard/static/fonts` stehen
 unter der SIL Open Font License (Lizenztexte im selben Ordner).

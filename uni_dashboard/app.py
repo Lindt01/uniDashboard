@@ -5,8 +5,8 @@ neu aus. Die Diagramme stehen in ``grafiken.py``, hier oben nur kleine
 Hilfen, darunter der Seitenaufbau in der Reihenfolge, in der er erscheint:
 Kennzahlen, Fächer/Stundenplan/Prüfungen, Aufgaben, Fortschritt.
 
-Start:
-    streamlit run app.py
+Start (im Projektordner):
+    streamlit run uni_dashboard/app.py
 """
 
 import zipfile
@@ -16,12 +16,12 @@ from pathlib import Path
 
 import streamlit as st
 
-import daten
-import grafiken
-import themen
+from uni_dashboard import daten, grafiken, themen
 
-ORDNER = Path(__file__).parent
-PFAD_DATEI = ORDNER / "excel_pfad.txt"
+PAKET = Path(__file__).resolve().parent
+# Eigene Daten liegen im Projektordner, nicht im Paket
+PROJEKT = PAKET.parent
+PFAD_DATEI = PROJEKT / "excel_pfad.txt"
 
 
 def excel_finden() -> Path:
@@ -34,9 +34,9 @@ def excel_finden() -> Path:
         eigener = Path(PFAD_DATEI.read_text(encoding="utf-8").strip().strip('"'))
         if eigener.exists():
             return eigener
-    if (ORDNER / "uni.xlsx").exists():
-        return ORDNER / "uni.xlsx"
-    return ORDNER / "beispiel.xlsx"
+    if (PROJEKT / "uni.xlsx").exists():
+        return PROJEKT / "uni.xlsx"
+    return PROJEKT / "beispiel.xlsx"
 
 
 EXCEL = excel_finden()
@@ -152,7 +152,7 @@ for schluessel, start in [("ansicht", themen.nach_uhrzeit(datetime.now()).name),
 # Das Thema muss vor dem Umschalter feststehen, damit schon die ganze
 # Seite in den richtigen Farben gezeichnet wird.
 thema = themen.THEMEN[st.session_state["ansicht"]]
-html(f"<style>{thema.css()}\n{(ORDNER / 'stil.css').read_text(encoding='utf-8')}</style>")
+html(f"<style>{thema.css()}\n{(PAKET / 'stil.css').read_text(encoding='utf-8')}</style>")
 heute = date.today()
 auf_aenderung_pruefen(EXCEL.stat().st_mtime, heute)
 
