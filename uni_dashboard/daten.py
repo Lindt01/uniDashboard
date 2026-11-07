@@ -216,11 +216,12 @@ def lade_aufgaben(pfad: Path) -> pd.DataFrame:
 
     Returns:
         DataFrame mit den Spalten ``Modul`` (str), ``Woche`` (int),
-        ``Erledigt`` (bool) und ``Notiz`` (str).
+        ``Erledigt`` (bool), ``Notiz`` (str) und ``Frist`` (Zeitpunkt,
+        ``NaT`` ohne Frist).
 
     Raises:
-        TabellenFehler: Wenn das Blatt oder eine Spalte fehlt oder eine
-            Woche keine ganze Zahl ist.
+        TabellenFehler: Wenn das Blatt oder eine Spalte fehlt, eine
+            Woche keine ganze Zahl ist oder eine Frist kein Datum ist.
     """
     # Spalten über ihren Namen lesen, nicht über die Position, damit
     # zusätzliche Spalten (z. B. "Frist") an beliebiger Stelle stehen dürfen.
@@ -238,7 +239,18 @@ def lade_aufgaben(pfad: Path) -> pd.DataFrame:
                              f"ist die Woche keine ganze Zahl: {wert}.")
     df["Woche"] = woche.astype(int)
     df["Erledigt"] = df["Status"].astype(str).str.strip().str.lower() == "done"
-    return df[["Modul", "Woche", "Erledigt", "Notiz"]].reset_index(drop=True)
+    # Die Spalte "Frist" ist freiwillig; ohne sie hat keine Aufgabe eine Frist.
+    fristen = []
+    for i, wert in (df["Frist"].items() if "Frist" in df else []):
+        try:
+            fristen.append(frist_lesen(wert))
+        except ValueError:
+            raise TabellenFehler(f"Im Blatt „Aufgabenliste“, Zeile {_zeile(i)} ({df.loc[i, 'Modul']}), "
+                                 f"ist die Frist „{wert}“ kein Datum. Erlaubt sind z. B. 14.11, "
+                                 f"14.11.2026 oder 14.11, 23:59; ohne Frist bleibt die Zelle leer "
+                                 f"oder enthält \\.") from None
+    df["Frist"] = pd.to_datetime(pd.Series(fristen, index=df.index, dtype=object)) if fristen else pd.NaT
+    return df[["Modul", "Woche", "Erledigt", "Notiz", "Frist"]].reset_index(drop=True)
 
 
 def lade_faecher(pfad: Path) -> pd.DataFrame:
@@ -304,6 +316,117 @@ def pruefungstermin(wert: str | datetime | None) -> datetime | None:
     if monat < SEMESTERBEGINN.month:
         jahr += 1
     return datetime(jahr, monat, tag, stunde, minute)
+
+
+FRIST_STUFEN = ("ueberfaellig", "dringend", "bald", "spaeter")
+"""Stufen einer Frist, von der dringendsten zur entspanntesten."""
+
+
+def frist_lesen(wert: str | datetime | None) -> datetime | None:
+    r"""Wandelt einen Eintrag der Spalte ``Frist`` in einen Zeitpunkt um.
+
+    Ohne Uhrzeit gilt die Frist bis 23:59 Uhr. Ohne Jahr wird es wie
+    bei :func:`pruefungstermin` aus dem Wintersemester bestimmt.
+
+    Args:
+        wert: Zelleninhalt, z. B. ``"14.11"``, ``"14.11.2026"``,
+            ``"14.11, 12:00"``, ein Excel-Datum, ``\\`` oder leer.
+
+    Returns:
+        Zeitpunkt der Frist, oder None, wenn es keine gibt.
+
+    Raises:
+        ValueError: Wenn der Text kein erkennbares Datum ist.
+
+    Example:
+        >>> frist_lesen("14.11")
+        datetime.datetime(2026, 11, 14, 23, 59)
+        >>> frist_lesen("3.2.2027, 12:00")
+        datetime.datetime(2027, 2, 3, 12, 0)
+        >>> frist_lesen("\\") is None
+        True
+    """
+    if wert is None or (not isinstance(wert, str) and pd.isna(wert)):
+        return None
+    if isinstance(wert, datetime):
+        wert = wert.to_pydatetime() if isinstance(wert, pd.Timestamp) else wert
+        # Ein reines Excel-Datum steht auf 0:00 Uhr: gemeint ist der ganze Tag.
+        return wert.replace(hour=23, minute=59) if wert.time() == time(0, 0) else wert
+    if isinstance(wert, date):
+        return datetime.combine(wert, time(23, 59))
+    text = str(wert).strip()
+    if text in ("", "\\", "/", "-", "–"):
+        return None
+    treffer = re.fullmatch(r"(\d{1,2})\.(\d{1,2})\.?(\d{4})?,?\s*(?:(\d{1,2}):(\d{2}))?", text)
+    if treffer is None:
+        raise ValueError(f"keine Frist: {text!r}")
+    tag, monat, jahr, stunde, minute = treffer.groups()
+    if jahr is None:
+        jahr = SEMESTERBEGINN.year + (int(monat) < SEMESTERBEGINN.month)
+    return datetime(int(jahr), int(monat), int(tag),
+                    int(stunde) if stunde else 23, int(minute) if minute else 59)
+
+
+def frist_stufe(frist: datetime | None, jetzt: datetime) -> str | None:
+    """Ordnet eine Frist einer Dringlichkeitsstufe zu.
+
+    Args:
+        frist: Zeitpunkt der Frist oder None.
+        jetzt: Aktueller Zeitpunkt.
+
+    Returns:
+        ``"ueberfaellig"`` (vorbei), ``"dringend"`` (heute oder morgen),
+        ``"bald"`` (in 2 bis 7 Tagen), ``"spaeter"`` oder None ohne Frist.
+
+    Example:
+        >>> frist_stufe(datetime(2026, 11, 7, 23, 59), datetime(2026, 11, 6, 9, 0))
+        'dringend'
+    """
+    if frist is None or pd.isna(frist):
+        return None
+    if frist < jetzt:
+        return "ueberfaellig"
+    tage = (frist.date() - jetzt.date()).days
+    if tage <= 1:
+        return "dringend"
+    if tage <= 7:
+        return "bald"
+    return "spaeter"
+
+
+def frist_text(frist: datetime, jetzt: datetime) -> str:
+    """Beschreibt eine Frist kurz in Worten, für das Etikett in der Tabelle.
+
+    Args:
+        frist: Zeitpunkt der Frist.
+        jetzt: Aktueller Zeitpunkt.
+
+    Returns:
+        Z. B. ``"seit gestern"``, ``"heute 12:00"``, ``"morgen"``,
+        ``"übermorgen"``, ``"in 5 Tagen"`` oder ``"14.11."``. Die Uhrzeit steht nur da,
+        wenn sie nicht 23:59 ist.
+
+    Example:
+        >>> frist_text(datetime(2026, 11, 6, 12, 0), datetime(2026, 11, 6, 9, 0))
+        'heute 12:00'
+        >>> frist_text(datetime(2026, 11, 3, 23, 59), datetime(2026, 11, 6, 9, 0))
+        'seit 3 Tagen'
+    """
+    tage = (frist.date() - jetzt.date()).days
+    uhr = "" if (frist.hour, frist.minute) == (23, 59) else f" {frist:%H:%M}"
+    if frist < jetzt:
+        if tage == 0:
+            return f"seit {frist:%H:%M}"
+        return "seit gestern" if tage == -1 else f"seit {-tage} Tagen"
+    if tage == 0:
+        return "heute" + uhr
+    if tage == 1:
+        return "morgen" + uhr
+    if tage == 2:
+        return "übermorgen" + uhr
+    if tage <= 7:
+        return f"in {tage} Tagen"
+    return f"{frist:%d.%m.}"
 
 
 def lade_stundenplan(pfad: Path) -> pd.DataFrame:

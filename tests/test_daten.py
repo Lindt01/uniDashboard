@@ -66,6 +66,87 @@ def test_aufgaben_entfernt_leerzeichen_und_leere_zeilen(tmp_path):
 
 # ---------------------------------------------------------------- Fächer
 
+# ---------------------------------------------------------------- Fristen
+
+@pytest.mark.parametrize("eingabe, erwartet", [
+    ("14.11", datetime(2026, 11, 14, 23, 59)),
+    ("14.11.", datetime(2026, 11, 14, 23, 59)),
+    ("14.11.2026", datetime(2026, 11, 14, 23, 59)),
+    ("14.11, 12:00", datetime(2026, 11, 14, 12, 0)),
+    (" 3.2, 9:30 ", datetime(2027, 2, 3, 9, 30)),   # Februar gehört ins Folgejahr
+    (datetime(2026, 11, 14), datetime(2026, 11, 14, 23, 59)),  # Excel-Datum ohne Uhrzeit
+    (datetime(2026, 11, 14, 10, 0), datetime(2026, 11, 14, 10, 0)),
+    ("\\", None), ("", None), (None, None),
+])
+def test_frist_lesen(eingabe, erwartet):
+    assert daten.frist_lesen(eingabe) == erwartet
+
+
+@pytest.mark.parametrize("eingabe", ["bald", "32.13", "14/11"])
+def test_frist_lesen_lehnt_unsinn_ab(eingabe):
+    with pytest.raises(ValueError):
+        daten.frist_lesen(eingabe)
+
+
+JETZT = datetime(2026, 11, 6, 9, 0)
+
+
+@pytest.mark.parametrize("frist, stufe", [
+    (datetime(2026, 11, 6, 8, 59), "ueberfaellig"),
+    (datetime(2026, 11, 6, 9, 1), "dringend"),
+    (datetime(2026, 11, 7, 23, 59), "dringend"),
+    (datetime(2026, 11, 8, 0, 0), "bald"),
+    (datetime(2026, 11, 13, 23, 59), "bald"),
+    (datetime(2026, 11, 14, 0, 0), "spaeter"),
+    (None, None), (pd.NaT, None),
+])
+def test_frist_stufe_grenzen(frist, stufe):
+    assert daten.frist_stufe(frist, JETZT) == stufe
+
+
+@pytest.mark.parametrize("frist, text", [
+    (datetime(2026, 11, 6, 8, 0), "seit 08:00"),
+    (datetime(2026, 11, 5, 23, 59), "seit gestern"),
+    (datetime(2026, 11, 6, 23, 59), "heute"),
+    (datetime(2026, 11, 7, 12, 0), "morgen 12:00"),
+    (datetime(2026, 11, 8, 23, 59), "übermorgen"),
+    (datetime(2026, 11, 11, 23, 59), "in 5 Tagen"),
+    (datetime(2026, 11, 20, 23, 59), "20.11."),
+])
+def test_frist_text(frist, text):
+    assert daten.frist_text(frist, JETZT) == text
+
+
+def test_aufgaben_lesen_frist_spalte(tmp_path):
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [
+        ["Modul", "Woche", "Status", "Frist", "Notiz"],
+        ["Mathe", 1, "X", "14.11", "Abgabe"],
+        ["Mathe", 1, "X", "\\", "ohne"],
+        ["Mathe", 2, "X", datetime(2026, 11, 20), "Excel-Datum"],
+    ]})
+    frist = daten.lade_aufgaben(pfad)["Frist"]
+    assert frist[0] == pd.Timestamp(2026, 11, 14, 23, 59)
+    assert pd.isna(frist[1])
+    assert frist[2] == pd.Timestamp(2026, 11, 20, 23, 59)
+
+
+def test_aufgaben_ohne_frist_spalte(tmp_path):
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [
+        ["Modul", "Woche", "Status", "Notiz"], ["Mathe", 1, "X", "Test"],
+    ]})
+    assert daten.lade_aufgaben(pfad)["Frist"].isna().all()
+
+
+def test_ungueltige_frist_nennt_zeile_und_wert(tmp_path):
+    pfad = excel_anlegen(tmp_path / "a.xlsx", {"Aufgabenliste": [
+        ["Modul", "Woche", "Status", "Notiz", "Frist"],
+        ["Mathe", 1, "X", "ok", "14.11"],
+        ["Statistik", 1, "X", "kaputt", "nächste Woche"],
+    ]})
+    with pytest.raises(daten.TabellenFehler, match="Zeile 3 \\(Statistik\\).*„nächste Woche“"):
+        daten.lade_aufgaben(pfad)
+
+
 def test_faecher_liest_nur_bis_zur_ersten_leeren_zeile(tmp_path):
     pfad = excel_anlegen(tmp_path / "f.xlsx", {"Fächer": [
         ["Fächer", "Vorlesung", "Übung", "Prüfung"],
@@ -285,3 +366,31 @@ def test_leere_excel_pfad_txt(tmp_path):
 
 def test_ohne_excel_pfad_txt_gibt_es_keinen_hinweis(tmp_path):
     assert daten.excel_finden(tmp_path) == (tmp_path / "beispiel.xlsx", None)
+
+
+# ---------------------------------------------------------------- Fristen-Kachel
+
+def test_fristen_kachel_zeigt_nur_die_naechsten_drei_tage():
+    from uni_dashboard import grafiken
+    aufgaben = pd.DataFrame({
+        "Modul": ["A", "B", "C", "D"], "Woche": [1, 1, 1, 1], "Erledigt": [False, False, False, True],
+        "Notiz": ["vorbei", "heute", "in drei Tagen", "erledigt"],
+        "Frist": pd.to_datetime(["2026-11-06 08:00", "2026-11-06 23:59", "2026-11-09 23:59",
+                                 "2026-11-06 23:59"]),
+    })
+    kachel = grafiken.fristen_kachel(aufgaben, datetime(2026, 11, 6, 9, 0))
+    assert "B: heute" in kachel
+    assert "vorbei" not in kachel and "in drei Tagen" not in kachel and "erledigt" not in kachel
+    assert "@keyframes" not in kachel   # eine Aufgabe: nichts zum Wechseln
+
+
+def test_fristen_kachel_wechselt_bei_mehreren():
+    from uni_dashboard import grafiken
+    aufgaben = pd.DataFrame({
+        "Modul": ["A", "B"], "Woche": [1, 1], "Erledigt": [False, False], "Notiz": ["x", "<b>y</b>"],
+        "Frist": pd.to_datetime(["2026-11-07 23:59", "2026-11-08 12:00"]),
+    })
+    kachel = grafiken.fristen_kachel(aufgaben, datetime(2026, 11, 6, 9, 0))
+    assert "@keyframes karussell-2" in kachel
+    assert ">übermorgen<" in kachel and "bis 12:00 · B:" in kachel
+    assert "&lt;b&gt;" in kachel   # Text aus der Excel wird maskiert

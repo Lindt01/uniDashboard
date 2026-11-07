@@ -115,6 +115,44 @@ h1.titel {
 .status.offen { background: var(--glas-innen); color: var(--text); }
 .status.erledigt { background: color-mix(in srgb, var(--akzent) 22%, transparent); color: var(--akzent); }
 
+/* Fristen: nur Überfälliges ist rot. Was heute oder morgen fällig ist,
+   pulsiert deutlich, was in den nächsten 7 Tagen kommt, nur leicht;
+   alles danach steht still da. */
+.tabelle th:nth-child(4), .tabelle td:nth-child(4) { white-space: nowrap; width: 1%; }
+.frist {
+    display: inline-block; padding: 1px 10px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+    background: var(--glas-innen); color: var(--text); box-shadow: var(--glas-kante); white-space: nowrap;
+}
+.frist.ueberfaellig { background: color-mix(in srgb, var(--rot) 20%, transparent); color: var(--rot); }
+.frist.dringend { animation: pulsieren-stark 1.2s ease-in-out infinite; }
+.frist.bald { animation: pulsieren-leicht 2.8s ease-in-out infinite; }
+@keyframes pulsieren-stark {
+    0%, 100% { box-shadow: var(--glas-kante), 0 0 0 0 color-mix(in srgb, var(--akzent) 0%, transparent); transform: scale(1); }
+    50% { box-shadow: var(--glas-kante), 0 0 12px 3px color-mix(in srgb, var(--akzent) 65%, transparent);
+          background: color-mix(in srgb, var(--akzent) 22%, var(--glas-innen)); transform: scale(1.06); }
+}
+@keyframes pulsieren-leicht {
+    0%, 100% { box-shadow: var(--glas-kante), 0 0 0 0 color-mix(in srgb, var(--akzent) 0%, transparent); }
+    50% { box-shadow: var(--glas-kante), 0 0 8px 1px color-mix(in srgb, var(--akzent) 35%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .frist.dringend, .frist.bald { animation: none; }
+}
+
+/* Fristen-Kachel: ein Fenster mit genau einer Zeile; bei mehreren
+   Fristen schiebt grafiken.fristen_kachel die Liste darin nach oben. */
+.karussell {
+    --zeile: 3.6rem; height: var(--zeile); overflow: hidden;
+    /* weiche Kanten oben und unten, damit das Blättern nicht hart abgeschnitten wirkt */
+    -webkit-mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+    mask-image: linear-gradient(transparent, #000 10%, #000 90%, transparent);
+}
+.karussell .eintrag { height: var(--zeile); }
+.karussell .wert, .karussell .zusatz { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (prefers-reduced-motion: reduce) {
+    .karussell .liste { animation: none !important; }
+}
+
 /* ---------------------------------------------------------- Eingabefelder */
 
 /* Streamlit färbt seine Widgets nach dem festen Theme aus config.toml.

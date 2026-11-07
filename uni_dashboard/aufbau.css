@@ -11,11 +11,13 @@
 /* ---------------------------------------------------------- Zeitplan */
 
 /* --t: Start des Umrisses (Bauplan), --f: Start der Füllung (Ausbau) */
-.kachel, [class*="st-key-karte"] { position: relative; }
+/* Standardwerte, damit keine Karte ohne Zeitplan ihren Umriss behält */
+.kachel, [class*="st-key-karte"] { position: relative; --t: 0.30s; --f: 2.40s; }
 .kachel:nth-child(1)      { --t: 0.30s; --f: 2.40s; }
 .kachel:nth-child(2)      { --t: 0.45s; --f: 2.55s; }
 .kachel:nth-child(3)      { --t: 0.60s; --f: 2.70s; }
 .kachel:nth-child(4)      { --t: 0.75s; --f: 2.85s; }
+.kachel:nth-child(5)      { --t: 0.85s; --f: 2.95s; }
 .st-key-karte_faecher     { --t: 0.95s; --f: 3.05s; }
 .st-key-karte_stundenplan { --t: 1.10s; --f: 3.20s; }
 .st-key-karte_pruefungen  { --t: 1.25s; --f: 3.35s; }

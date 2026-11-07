@@ -236,6 +236,8 @@ if len(kommende):
 else:
     pruefung_wert, pruefung_zusatz = "–", "keine Termine"
 
+jetzt = datetime.now()
+
 kacheln = [
     ("Offene Aufgaben", offen_gesamt, f"von {len(aufgaben)} insgesamt"),
     ("Erledigt", f"{quote:.0f} %", f"{erledigt_gesamt} Aufgaben"),
@@ -246,7 +248,8 @@ kacheln = [
 ]
 html("<div class='kacheln'>" + "".join(
     f"<div class='kachel'><div class='etikett'>{e}</div><div class='wert'>{w}</div>"
-    f"<div class='zusatz'>{escape(z)}</div></div>" for e, w, z in kacheln) + "</div>")
+    f"<div class='zusatz'>{escape(z)}</div></div>" for e, w, z in kacheln)
+     + grafiken.fristen_kachel(aufgaben, jetzt) + "</div>")
 
 # ---------------------------------------------------------------- Fächer | Stundenplan | Prüfungen
 
@@ -308,8 +311,9 @@ with st.container(key="karte_aufgaben"):
     elif status == "Erledigt":
         liste = liste[liste["Erledigt"]]
 
-    anzeige = liste.sort_values(["Erledigt", "Woche", "Modul"])
-    html(grafiken.aufgaben_tabelle(anzeige))
+    # Offene zuerst, darin die nächste Frist oben; ohne Frist nach Woche
+    anzeige = liste.sort_values(["Erledigt", "Frist", "Woche", "Modul"], na_position="last")
+    html(grafiken.aufgaben_tabelle(anzeige, jetzt))
 
 with st.container(key="karte_fortschritt"):
     erledigt = int(auswahl["Erledigt"].sum())

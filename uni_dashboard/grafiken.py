@@ -7,7 +7,7 @@ nichts zu tun, deshalb lassen sie sich auch ohne laufende App aufrufen.
 
 import math
 from collections.abc import Callable
-from datetime import date
+from datetime import date, datetime
 from html import escape
 
 import pandas as pd
@@ -222,16 +222,22 @@ def ringe_html(tabelle: pd.DataFrame, farbe_von: Callable[[str], str]) -> str:
     return "<div class='ringe'>" + "".join(kacheln) + "</div>"
 
 
-def aufgaben_tabelle(tabelle: pd.DataFrame) -> str:
+def aufgaben_tabelle(tabelle: pd.DataFrame, jetzt: datetime) -> str:
     """Baut die Aufgabenliste als HTML-Tabelle.
 
     Streamlits eigene Tabelle zeichnet auf eine Leinwand und lässt sich
     nicht durchsichtig machen. Als HTML scheint das Glas durch, und
     die Farben folgen dem Tag- oder Nachtmodus.
 
+    Offene Aufgaben mit Frist bekommen ein Etikett, dessen Klasse die
+    Stufe aus :func:`daten.frist_stufe` ist; ``stil.css`` lässt es je
+    nach Stufe pulsieren oder rot werden.
+
     Args:
         tabelle: Aufgaben in der gewünschten Reihenfolge, mit den
-            Spalten ``Modul``, ``Woche``, ``Erledigt`` und ``Notiz``.
+            Spalten ``Modul``, ``Woche``, ``Erledigt``, ``Notiz`` und
+            ``Frist``.
+        jetzt: Bezugszeitpunkt für die Fristen.
 
     Returns:
         HTML-Baustein für :func:`html`; bei vielen Zeilen scrollt er.
@@ -242,11 +248,76 @@ def aufgaben_tabelle(tabelle: pd.DataFrame) -> str:
     for _, a in tabelle.iterrows():
         status = ("<span class='status erledigt'>Erledigt</span>" if a["Erledigt"]
                   else "<span class='status offen'>Offen</span>")
+        frist = ""
+        if not a["Erledigt"] and not pd.isna(a["Frist"]):
+            stufe = daten.frist_stufe(a["Frist"], jetzt)
+            frist = (f"<span class='frist {stufe}' title='{a['Frist']:%d.%m.%Y, %H:%M} Uhr'>"
+                     f"{daten.frist_text(a['Frist'], jetzt)}</span>")
         zeilen.append(f"<tr><td class='modul'>{escape(a['Modul'])}</td><td class='zahl'>{a['Woche']}</td>"
-                      f"<td>{status}</td><td>{escape(a['Notiz'])}</td></tr>")
+                      f"<td>{status}</td><td>{frist}</td><td>{escape(a['Notiz'])}</td></tr>")
     return ("<div class='tabelle-rahmen'><table class='tabelle'>"
-            "<thead><tr><th>Modul</th><th class='zahl'>Woche</th><th>Status</th><th>Notiz</th></tr></thead>"
+            "<thead><tr><th>Modul</th><th class='zahl'>Woche</th><th>Status</th><th>Frist</th>"
+            "<th>Notiz</th></tr></thead>"
             "<tbody>" + "".join(zeilen) + "</tbody></table></div>")
+
+
+FRIST_TAGE = 2
+"""Die Fristen-Kachel zeigt Fristen von heute bis übermorgen."""
+
+KARUSSELL_TAKT = 4.0
+"""Sekunden, die jede Frist in der Kachel zu sehen ist (inkl. Wechsel)."""
+
+
+def fristen_kachel(aufgaben: pd.DataFrame, jetzt: datetime) -> str:
+    """Baut die Kennzahl-Kachel mit den Fristen der nächsten Tage.
+
+    Gezeigt werden offene Aufgaben, deren Frist heute, morgen oder
+    übermorgen endet und noch nicht vorbei ist. Sind es mehrere, steht
+    immer eine da; die nächste schiebt sich wie beim Herunterblättern
+    von unten herein. Das geschieht nur mit CSS, weil Streamlit in
+    Markdown kein JavaScript ausführt.
+
+    Args:
+        aufgaben: Alle Aufgaben mit den Spalten ``Modul``, ``Erledigt``,
+            ``Notiz`` und ``Frist``.
+        jetzt: Bezugszeitpunkt.
+
+    Returns:
+        HTML einer ``.kachel`` für die Kennzahl-Reihe.
+    """
+    tage = (aufgaben["Frist"].dt.normalize() - pd.Timestamp(jetzt.date())).dt.days
+    bald = aufgaben[~aufgaben["Erledigt"] & (aufgaben["Frist"] >= jetzt) & (tage <= FRIST_TAGE)]
+    bald = bald.sort_values("Frist")
+    anzahl = len(bald)
+    etikett = "Fristen" + (f" · {anzahl}" if anzahl > 1 else "")
+    if not anzahl:
+        eintraege = ["<div class='eintrag'><div class='wert'>frei</div>"
+                     "<div class='zusatz'>keine Frist bis übermorgen</div></div>"]
+    else:
+        eintraege = []
+        for _, a in bald.iterrows():
+            # Groß nur der Tag; eine Uhrzeit steht klein darunter, damit nichts umbricht
+            tag = daten.frist_text(a["Frist"].replace(hour=23, minute=59), jetzt)
+            uhr = "" if (a["Frist"].hour, a["Frist"].minute) == (23, 59) else f"bis {a['Frist']:%H:%M} · "
+            eintraege.append(f"<div class='eintrag'><div class='wert'>{tag}</div>"
+                             f"<div class='zusatz'>{uhr}{escape(a['Modul'])}: {escape(a['Notiz'])}</div></div>")
+    stil = ""
+    if anzahl > 1:
+        # Die erste Frist steht am Ende noch einmal. Ist sie erreicht,
+        # springt die Liste unsichtbar an den Anfang zurück.
+        eintraege.append(eintraege[0])
+        schritte = []
+        for i in range(anzahl):
+            start, wechsel = i / anzahl * 100, (i + 0.85) / anzahl * 100
+            schritte.append(f"{start:.2f}%, {wechsel:.2f}% {{ transform: translateY(calc({-i} * var(--zeile))); }}")
+        schritte.append(f"100% {{ transform: translateY(calc({-anzahl} * var(--zeile))); }}")
+        stil = (f"<style>@keyframes karussell-{anzahl} {{ {' '.join(schritte)} }}"
+                f".karussell-{anzahl} {{ animation: karussell-{anzahl} {anzahl * KARUSSELL_TAKT:g}s "
+                f"cubic-bezier(0.65, 0, 0.35, 1) infinite; }}</style>")
+    # Der <style>-Block steht innerhalb der Kachel: davor würde er die
+    # Zählung von .kachel:nth-child in aufbau.css verschieben.
+    return (f"<div class='kachel'>{stil}<div class='etikett'>{etikett}</div>"
+            f"<div class='karussell'><div class='liste karussell-{anzahl}'>{''.join(eintraege)}</div></div></div>")
 
 
 # ---------------------------------------------------------------- Hilfen

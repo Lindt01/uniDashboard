@@ -13,6 +13,8 @@ das Dashboard liest sie bei jedem Neuladen ein.
 - Stundenplan als Wochenraster, parallele Termine nebeneinander, der heutige Tag hervorgehoben
 - Prüfungen mit Countdown, nicht feststehende Termine gesammelt
 - Aufgabenliste mit Filtern zum Anklicken: Wochen, Module und Status (startet auf „Offen“)
+- Fristen: offene Aufgaben mit der nächsten Frist stehen oben. Überfälliges ist rot,
+  was heute oder morgen fällig ist, pulsiert deutlich, die nächsten 7 Tage nur leicht
 - Fortschrittsring je Fach und Säulen je Woche, passen sich den gewählten Filtern an
 - Tag- und Nachtmodus mit Glasflächen; beim Öffnen nach Uhrzeit gewählt (19–7 Uhr Nacht), jederzeit umschaltbar
 - Aktualisiert sich selbst, sobald die Excel-Datei gespeichert wird
@@ -77,7 +79,7 @@ Streamlit sind abgeschaltet.
 |---|---|
 | `Fächer` | Fächer, Vorlesung, Übung, Prüfung (z. B. `11.02, 9:00` oder `TBA`) |
 | `Stundenplan` | Fach, Art, Tag (`Mo`–`Fr`), Von, Bis, Raum |
-| `Aufgabenliste` | Modul, Woche, Status (`Done` oder `X`), Notiz; optional Frist (`\` = keine Frist) |
+| `Aufgabenliste` | Modul, Woche, Status (`Done` oder `X`), Notiz; optional Frist: `14.11`, `14.11.2026`, `14.11, 12:00` oder ein Excel-Datum, ohne Uhrzeit gilt 23:59 (`\` oder leer = keine Frist) |
 
 In der Aufgabenliste werden die Spalten über ihre Überschrift gefunden, weitere
 Spalten dürfen an beliebiger Stelle stehen.
@@ -140,7 +142,7 @@ pip-compile --strip-extras --no-emit-index-url --output-file requirements.txt py
 - [x] Paketversionen festlegen und automatisch auf Sicherheitslücken prüfen (Dependabot, pip-audit)
 - [ ] Betrieb im Homelab
 - [x] Tag- und Nachtmodus
-- [ ] Fristen: Spalte „Frist“ auswerten, Anzeige „Diese Woche fällig“, Überfälliges hervorheben
+- [x] Fristen: Spalte „Frist“ auswerten, Fälliges hervorheben, Überfälliges rot
 - [ ] Wochenrückblick: erledigte Aufgaben der letzten Woche im Vergleich zur Vorwoche
 - [ ] Uni-Mails unten im Dashboard anzeigen (IMAP, nur lesend, Passwort in der Windows-Anmeldeinformationsverwaltung)
 

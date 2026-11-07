@@ -19,6 +19,7 @@ class Thema:
         text: Haupttextfarbe.
         text_leise: Farbe für Nebensächliches (Räume, Untertitel).
         akzent: Farbe für Hervorhebungen und erledigte Aufgaben.
+        rot: Warnfarbe, nur für überfällige Fristen.
         linie: Rasterlinien und Trennlinien.
         glas: Füllung der Karten, halbdurchsichtig.
         glas_innen: Füllung von Elementen innerhalb einer Karte.
@@ -34,6 +35,7 @@ class Thema:
     text: str
     text_leise: str
     akzent: str
+    rot: str
     linie: str
     glas: str
     glas_innen: str
@@ -51,7 +53,7 @@ class Thema:
         """
         werte = {
             "hintergrund": self.hintergrund, "text": self.text, "text-leise": self.text_leise,
-            "akzent": self.akzent, "linie": self.linie, "glas": self.glas,
+            "akzent": self.akzent, "rot": self.rot, "linie": self.linie, "glas": self.glas,
             "glas-innen": self.glas_innen, "glas-rand": self.glas_rand,
             "glanz": self.glanz, "glas-schatten": self.schatten, "tooltip": self.tooltip,
         }
@@ -66,6 +68,7 @@ TAG = Thema(
     text="#1d1d1f",
     text_leise="#55585e",
     akzent="#1a8a4f",
+    rot="#d70015",
     linie="rgba(0, 0, 0, 0.08)",
     glas="rgba(255, 255, 255, 0.30)",
     glas_innen="rgba(255, 255, 255, 0.28)",
@@ -87,6 +90,7 @@ NACHT = Thema(
     text="#f5f5f7",
     text_leise="#a1a1a6",
     akzent="#30d158",
+    rot="#ff453a",
     linie="rgba(255, 255, 255, 0.08)",
     glas="rgba(255, 255, 255, 0.06)",
     glas_innen="rgba(255, 255, 255, 0.06)",
