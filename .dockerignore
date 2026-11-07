@@ -1,0 +1,20 @@
+# Persönliche Daten: nie ins Image
+UNI.xlsx
+excel_pfad.txt
+.env
+*.log
+
+# Lokale Umgebung und Zwischenstände
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Für den Betrieb nicht nötig
+.git/
+.github/
+.vscode/
+docs/
+tests/
+windows/
