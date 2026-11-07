@@ -44,3 +44,24 @@ jobs:
 
       - name: Bekannte Sicherheitslücken (pip-audit)
         run: pip-audit --skip-editable
+
+  
+  docker:
+    # Erst wenn Stil und Tests grün sind
+    needs: pruefen
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image bauen
+        run: docker build -t uni-dashboard .
+
+      - name: Container starten und prüfen, ob das Dashboard antwortet
+        run: |
+          docker run -d --name dashboard -p 8501:8501 uni-dashboard
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:8501/_stcore/health; then exit 0; fi
+            sleep 1
+          done
+          docker logs dashboard
+          exit 1
