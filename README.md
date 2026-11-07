@@ -50,10 +50,11 @@ streamlit run uni_dashboard/app.py
 
 Das Dashboard sucht die Excel-Datei in dieser Reihenfolge:
 
-1. den Pfad in `excel_pfad.txt` im Projektordner, z. B. `C:\Users\name\Desktop\UNI.xlsx`
+1. die Umgebungsvariable `UNI_EXCEL` (für Docker, siehe unten)
+2. den Pfad in `excel_pfad.txt` im Projektordner, z. B. `C:\Users\name\Desktop\UNI.xlsx`
    (so kann die Tabelle liegen, wo man will)
-2. `uni.xlsx` im Projektordner
-3. `beispiel.xlsx` mit Beispieldaten
+3. `uni.xlsx` im Projektordner
+4. `beispiel.xlsx` mit Beispieldaten
 
 ### Als Desktop-Programm (Windows)
 
@@ -65,6 +66,25 @@ Fehlermeldungen landen in `dashboard.log`.
 Excel sperrt die Datei beim automatischen Speichern in OneDrive. Damit das
 Dashboard sie auch bei geöffneter Tabelle lesen kann, in Excel „Automatisches
 Speichern“ ausschalten und mit Strg+S speichern.
+
+### Mit Docker
+
+```bash
+docker build -t uni-dashboard .
+docker run --rm -p 8501:8501 uni-dashboard
+```
+
+Dann http://localhost:8501 öffnen. Ohne weitere Angaben zeigt das Dashboard
+die Beispieldaten. Für die eigene Tabelle den Ordner schreibgeschützt einbinden
+und den Pfad im Container angeben:
+
+```bash
+docker run --rm -p 8501:8501 -v "C:\Users\name\Desktop:/daten:ro" -e UNI_EXCEL=/daten/UNI.xlsx uni-dashboard
+```
+
+Eingebunden wird der Ordner und nicht nur die Datei: Excel ersetzt die Datei beim
+Speichern durch eine neue, und eine einzeln eingebundene Datei bliebe im
+Container auf dem alten Stand. Die Tabelle selbst kommt nie ins Image.
 
 ### Offline
 
@@ -103,8 +123,10 @@ windows/                Start als Desktop-Programm unter Windows
   verknuepfung_erstellen.bat
 tests/                  Tests für daten.py und themen.py
 docs/                   Vorschau-GIF, Aktivitätsdiagramm (draw.io), Logo (logo.svg, logo.ico)
-.github/workflows/      CI: ruff und pytest bei jedem Push
+.github/workflows/      CI: ruff, pytest, pip-audit, Docker-Build mit Starttest
 .streamlit/             Theme, Schrift, Server-Einstellungen
+Dockerfile              Image für den Betrieb als Container
+.dockerignore           Was nicht ins Image kommt (u. a. die eigene Excel)
 pyproject.toml          Projektdaten, Abhängigkeiten, ruff- und pytest-Einstellungen
 beispiel.xlsx           Beispieldaten
 ```
@@ -137,7 +159,7 @@ pip-compile --strip-extras --no-emit-index-url --output-file requirements.txt py
 
 ## Geplant
 
-- [ ] Docker-Image
+- [x] Docker-Image
 - [x] Tests für `daten.py`
 - [x] GitHub Actions (Lint und Tests)
 - [x] Paketversionen festlegen und automatisch auf Sicherheitslücken prüfen (Dependabot, pip-audit)
