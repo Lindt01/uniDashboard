@@ -96,12 +96,13 @@ uni_dashboard/          Das Programm (Python-Paket)
   themen.py             Farben für Tag- und Nachtmodus
   stil.css              Gestaltung (Glasflächen, Karten, Filter)
   aufbau.css            Kurze Aufbau-Animation beim ersten Öffnen
+  logo.png              Symbol im Browser-Tab
   static/fonts/         Schriften (lokal statt Google Fonts)
 windows/                Start als Desktop-Programm unter Windows
   starten.pyw           Server im Hintergrund starten, Fenster öffnen
   verknuepfung_erstellen.bat
 tests/                  Tests für daten.py und themen.py
-docs/                   Vorschau-GIF, Aktivitätsdiagramm (draw.io), Programmsymbol
+docs/                   Vorschau-GIF, Aktivitätsdiagramm (draw.io), Logo (logo.svg, logo.ico)
 .github/workflows/      CI: ruff und pytest bei jedem Push
 .streamlit/             Theme, Schrift, Server-Einstellungen
 pyproject.toml          Projektdaten, Abhängigkeiten, ruff- und pytest-Einstellungen

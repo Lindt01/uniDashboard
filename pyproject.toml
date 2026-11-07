@@ -27,7 +27,7 @@ Repository = "https://github.com/Lindt01/uniDashboard"
 packages = ["uni_dashboard"]
 
 [tool.setuptools.package-data]
-uni_dashboard = ["*.css", "static/fonts/*"]
+uni_dashboard = ["*.css", "*.png", "static/fonts/*"]
 
 [tool.ruff]
 line-length = 120

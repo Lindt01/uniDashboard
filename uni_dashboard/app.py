@@ -148,7 +148,7 @@ def auf_aenderung_pruefen(stand: float, tag: date, erneut_versuchen: bool) -> No
 
 # ---------------------------------------------------------------- Daten
 
-st.set_page_config(page_title="Uni WiSe 2026/27", layout="wide")
+st.set_page_config(page_title="Uni WiSe 2026/27", page_icon=str(PAKET / "logo.png"), layout="wide")
 
 # Startwerte der Umschalter, einmal pro Sitzung: Ansicht nach Uhrzeit,
 # Aufgaben gefiltert auf offene. Danach gilt, was angeklickt wurde.

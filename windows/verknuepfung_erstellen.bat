@@ -21,7 +21,7 @@ powershell -NoProfile -Command ^
   "$v.TargetPath = '%PROJEKT%\.venv\Scripts\pythonw.exe';" ^
   "$v.Arguments = 'windows\starten.pyw';" ^
   "$v.WorkingDirectory = '%PROJEKT%';" ^
-  "$v.IconLocation = '%PROJEKT%\docs\icon.ico';" ^
+  "$v.IconLocation = '%PROJEKT%\docs\logo.ico';" ^
   "$v.Description = 'Uni-Dashboard';" ^
   "$v.Save()"
 
