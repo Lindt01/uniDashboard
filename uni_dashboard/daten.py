@@ -18,6 +18,7 @@ mit einer Meldung aus, die direkt im Dashboard angezeigt werden kann:
   korrigiert werden.
 """
 
+import os
 import re
 import zipfile
 from dataclasses import dataclass
@@ -89,7 +90,8 @@ class Tabellen:
 def excel_finden(projekt: Path) -> tuple[Path, str | None]:
     """Sucht die Excel-Datei, die angezeigt werden soll.
 
-    Reihenfolge: der Pfad in ``excel_pfad.txt``, dann ``uni.xlsx``, dann
+    Reihenfolge: die Umgebungsvariable ``UNI_EXCEL`` (für Docker), der
+    Pfad in ``excel_pfad.txt``, dann ``uni.xlsx``, dann
     ``beispiel.xlsx`` (alle im Projektordner). Zeigt ``excel_pfad.txt``
     auf eine Datei, die es nicht gibt, wird das nicht still übergangen,
     sondern als Hinweis zurückgegeben.
@@ -102,6 +104,12 @@ def excel_finden(projekt: Path) -> tuple[Path, str | None]:
         wenn alles wie eingestellt gefunden wurde.
     """
     hinweis = None
+    # Im Container kommt der Pfad aus der Umgebungsvariable UNI_EXCEL
+    aus_umgebung = os.environ.get("UNI_EXCEL")
+    if aus_umgebung:
+        if Path(aus_umgebung).is_file():
+            return Path(aus_umgebung), None
+        hinweis = f"UNI_EXCEL zeigt auf „{aus_umgebung}“, diese Datei gibt es nicht."
     pfad_datei = projekt / "excel_pfad.txt"
     if pfad_datei.exists():
         # utf-8-sig: Der Windows-Editor setzt manchmal unsichtbare Zeichen an den Anfang

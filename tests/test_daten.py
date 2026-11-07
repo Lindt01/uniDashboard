@@ -348,6 +348,21 @@ def test_excel_pfad_txt_hat_vorrang(tmp_path):
     assert daten.excel_finden(tmp_path) == (eigene, None)
 
 
+def test_umgebungsvariable_hat_vorrang(tmp_path, monkeypatch):
+    eigene = tmp_path / "meine.xlsx"
+    eigene.touch()
+    monkeypatch.setenv("UNI_EXCEL", str(eigene))
+    assert daten.excel_finden(tmp_path) == (eigene, None)
+
+
+def test_falsche_umgebungsvariable_wird_gemeldet(tmp_path, monkeypatch):
+    monkeypatch.setenv("UNI_EXCEL", str(tmp_path / "gibtsnicht.xlsx"))
+    pfad, hinweis = daten.excel_finden(tmp_path)
+    assert pfad == tmp_path / "beispiel.xlsx"
+    assert hinweis.startswith("UNI_EXCEL zeigt auf")
+    assert hinweis.endswith("Angezeigt wird stattdessen beispiel.xlsx.")
+
+
 def test_falscher_pfad_wird_gemeldet_statt_still_ersetzt(tmp_path):
     (tmp_path / "excel_pfad.txt").write_text(str(tmp_path / "gibtsnicht.xlsx"), encoding="utf-8")
     pfad, hinweis = daten.excel_finden(tmp_path)
