@@ -32,3 +32,15 @@ updates:
         patterns: ["*"]
     commit-message:
       prefix: ci
+
+  
+  # Basis-Image im Dockerfile (python:3.13-slim)
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Berlin
+    commit-message:
+      prefix: docker
