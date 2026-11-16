@@ -1,5 +1,5 @@
 # Basis: schlankes Debian mit Python 3.13
-FROM python:3.13-slim
+FROM python:3.15-slim
 
 # Python soll keine .pyc-Dateien schreiben und Ausgaben sofort zeigen
 ENV PYTHONDONTWRITEBYTECODE=1 \
